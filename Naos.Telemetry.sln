@@ -3,7 +3,31 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Domain", "Naos.Telemetry.Domain\Naos.Telemetry.Domain.csproj", "{40CAE442-EF5F-46DA-A8BF-FBB1371DFB7F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.StorageModel", "Naos.Telemetry.StorageModel\Naos.Telemetry.StorageModel.csproj", "{F72AC867-FA50-4FF0-91D2-81A9B8399AFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Writer", "Naos.Telemetry.Writer\Naos.Telemetry.Writer.csproj", "{84E375DB-6CCA-4F6F-8A14-9640537A68C2}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{40CAE442-EF5F-46DA-A8BF-FBB1371DFB7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40CAE442-EF5F-46DA-A8BF-FBB1371DFB7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40CAE442-EF5F-46DA-A8BF-FBB1371DFB7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40CAE442-EF5F-46DA-A8BF-FBB1371DFB7F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F72AC867-FA50-4FF0-91D2-81A9B8399AFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F72AC867-FA50-4FF0-91D2-81A9B8399AFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F72AC867-FA50-4FF0-91D2-81A9B8399AFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F72AC867-FA50-4FF0-91D2-81A9B8399AFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
