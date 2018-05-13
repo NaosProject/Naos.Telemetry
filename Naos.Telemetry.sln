@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.StorageModel
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Writer", "Naos.Telemetry.Writer\Naos.Telemetry.Writer.csproj", "{84E375DB-6CCA-4F6F-8A14-9640537A68C2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Test", "Naos.Telemetry.Test\Naos.Telemetry.Test.csproj", "{AC919C8C-DEE3-46E0-8258-0B438966B208}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84E375DB-6CCA-4F6F-8A14-9640537A68C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC919C8C-DEE3-46E0-8258-0B438966B208}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC919C8C-DEE3-46E0-8258-0B438966B208}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC919C8C-DEE3-46E0-8258-0B438966B208}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC919C8C-DEE3-46E0-8258-0B438966B208}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
