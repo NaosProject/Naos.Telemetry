@@ -15,9 +15,9 @@ namespace Naos.Telemetry.Domain
     /// </summary>
     public class EventTelemetry : IAmTelemetryItem
     {
-        private readonly Dictionary<string, decimal> metricNameToValueMap;
-
         private readonly Dictionary<string, string> propertyNameToValueMap;
+
+        private readonly Dictionary<string, decimal?> metricNameToValueMap;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventTelemetry"/> class.
@@ -25,7 +25,7 @@ namespace Naos.Telemetry.Domain
         /// <param name="name">Name of the event.</param>
         /// <param name="propertyNameToValueMap">Optional properties associated with the event.</param>
         /// <param name="metricNameToValueMap">Optional metrics associated with the event.</param>
-        public EventTelemetry(string name, IReadOnlyDictionary<string, string> propertyNameToValueMap = null, IReadOnlyDictionary<string, decimal> metricNameToValueMap = null)
+        public EventTelemetry(string name, IReadOnlyDictionary<string, string> propertyNameToValueMap = null, IReadOnlyDictionary<string, decimal?> metricNameToValueMap = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -34,7 +34,7 @@ namespace Naos.Telemetry.Domain
 
             this.Name = name;
             this.propertyNameToValueMap = propertyNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, string>();
-            this.metricNameToValueMap = metricNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, decimal>();
+            this.metricNameToValueMap = metricNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, decimal?>();
         }
 
         /// <summary>
@@ -45,14 +45,14 @@ namespace Naos.Telemetry.Domain
         /// <summary>
         /// Gets any metrics associated with the event.
         /// </summary>
-        public IReadOnlyDictionary<string, decimal> MetricNameToValueMap => this.metricNameToValueMap;
+        public IReadOnlyDictionary<string, decimal?> MetricNameToValueMap => this.metricNameToValueMap;
 
         /// <summary>
         /// Add a metric to collection.
         /// </summary>
         /// <param name="name">Name of the metric.</param>
         /// <param name="value">Value of the metric.</param>
-        public void AddMetric(string name, decimal value)
+        public void AddMetric(string name, decimal? value)
         {
             this.metricNameToValueMap.Add(name, value);
         }

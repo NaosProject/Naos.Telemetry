@@ -45,8 +45,8 @@
     <Reference Include="Naos.Compression.Domain, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Naos.Compression.Domain.1.0.5\lib\net461\Naos.Compression.Domain.dll</HintPath>
     </Reference>
-    <Reference Include="Naos.Diagnostics.Domain, Version=1.2.6.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Naos.Diagnostics.Domain.1.2.6\lib\net461\Naos.Diagnostics.Domain.dll</HintPath>
+    <Reference Include="Naos.Diagnostics.Domain, Version=1.2.7.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Naos.Diagnostics.Domain.1.2.7\lib\net461\Naos.Diagnostics.Domain.dll</HintPath>
     </Reference>
     <Reference Include="Naos.Serialization.Domain, Version=1.0.50.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Naos.Serialization.Domain.1.0.50\lib\net461\Naos.Serialization.Domain.dll</HintPath>

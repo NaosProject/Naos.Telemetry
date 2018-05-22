@@ -11,6 +11,8 @@ namespace Naos.Diagnostics.Recipes
     using System.Net;
     using System.Net.NetworkInformation;
 
+    using static System.FormattableString;
+
     /// <summary>
     /// Uses various methods to get the name of a machine.
     /// </summary>
@@ -32,13 +34,82 @@ namespace Naos.Diagnostics.Recipes
         /// </returns>
         public static string GetMachineName()
         {
-            var result = GetResolvedLocalhostName();
+            var result = GetMachineName(GetResolvedLocalhostName, GetFullyQualifiedDomainName, GetNetBiosName);
+            return result;
+        }
+
+        /// <summary>
+        /// Gets the name of this machine, using provided name map to come
+        /// up with a genrally "good" name for use in a broad set of scenarios.
+        /// </summary>
+        /// <param name="machineNameKindToValueMap">Map of available names.</param>
+        /// <returns>
+        /// The name of this machine.
+        /// </returns>
+        public static string GetMachineName(this IReadOnlyDictionary<MachineNameKind, string> machineNameKindToValueMap)
+        {
+            if (machineNameKindToValueMap == null)
+            {
+                throw new ArgumentNullException(nameof(machineNameKindToValueMap));
+            }
+
+            if (!machineNameKindToValueMap.ContainsKey(MachineNameKind.ResolvedLocalhostName))
+            {
+                throw new ArgumentException(Invariant($"Parameter {machineNameKindToValueMap} must contain entry for {nameof(MachineNameKind)}.{MachineNameKind.ResolvedLocalhostName}."));
+            }
+
+            if (!machineNameKindToValueMap.ContainsKey(MachineNameKind.FullyQualifiedDomainName))
+            {
+                throw new ArgumentException(Invariant($"Parameter {machineNameKindToValueMap} must contain entry for {nameof(MachineNameKind)}.{MachineNameKind.FullyQualifiedDomainName}."));
+            }
+
+            if (!machineNameKindToValueMap.ContainsKey(MachineNameKind.NetBiosName))
+            {
+                throw new ArgumentException(Invariant($"Parameter {machineNameKindToValueMap} must contain entry for {nameof(MachineNameKind)}.{MachineNameKind.NetBiosName}."));
+            }
+
+            var result = GetMachineName(
+                () => machineNameKindToValueMap[MachineNameKind.ResolvedLocalhostName],
+                () => machineNameKindToValueMap[MachineNameKind.FullyQualifiedDomainName],
+                () => machineNameKindToValueMap[MachineNameKind.NetBiosName]);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Gets the name of this machine, using provided name functions to come
+        /// up with a genrally "good" name for use in a broad set of scenarios.
+        /// </summary>
+        /// <param name="resolvedLocalhostFunc">Function to get the value of <see cref="GetResolvedLocalhostName" />.</param>
+        /// <param name="fullyQualifiedDomainNameFunc">Function to get the value of <see cref="GetFullyQualifiedDomainName" />.</param>
+        /// <param name="netBiosNameFunc">Function to get the value of <see cref="GetNetBiosName" />.</param>
+        /// <returns>
+        /// The name of this machine.
+        /// </returns>
+        public static string GetMachineName(Func<string> resolvedLocalhostFunc, Func<string> fullyQualifiedDomainNameFunc, Func<string> netBiosNameFunc)
+        {
+            if (resolvedLocalhostFunc == null)
+            {
+                throw new ArgumentNullException(nameof(resolvedLocalhostFunc));
+            }
+
+            if (fullyQualifiedDomainNameFunc == null)
+            {
+                throw new ArgumentNullException(nameof(fullyQualifiedDomainNameFunc));
+            }
+
+            if (netBiosNameFunc == null)
+            {
+                throw new ArgumentNullException(nameof(netBiosNameFunc));
+            }
+
+            var result = resolvedLocalhostFunc();
             if (result == "localhost")
             {
-                result = GetFullyQualifiedDomainName();
+                result = fullyQualifiedDomainNameFunc();
                 if (string.IsNullOrEmpty(result))
                 {
-                    result = GetNetBiosName();
+                    result = netBiosNameFunc();
                 }
             }
 

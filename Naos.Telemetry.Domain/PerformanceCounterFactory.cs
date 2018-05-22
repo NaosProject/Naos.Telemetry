@@ -25,7 +25,7 @@ namespace Naos.Telemetry.Domain
         public static EventTelemetry ToEventTelemetry(this ICollection<PerformanceCounterSample> performanceCounterSamples, string name)
         {
             // TODO: should we try to capture the in range idea here?
-            var metrics = performanceCounterSamples.ToDictionary(k => k.Description.ToString(), v => (decimal)v.Value);
+            var metrics = performanceCounterSamples.ToDictionary(k => k.Description.ToString(), v => (decimal?)v.Value);
             var properties = new Dictionary<string, string>();
             var result = new EventTelemetry(name, properties, metrics);
             return result;
