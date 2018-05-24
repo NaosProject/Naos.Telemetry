@@ -6,6 +6,7 @@
 
 namespace Naos.Telemetry.Domain
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
 
@@ -21,13 +22,14 @@ namespace Naos.Telemetry.Domain
         /// </summary>
         /// <param name="performanceCounterSamples">Sampled performance counters.</param>
         /// <param name="name">Name of event.</param>
+        /// <param name="sampledUtc">Date time of sample in UTC.</param>
         /// <returns>Converted <see cref="EventTelemetry" />.</returns>
-        public static EventTelemetry ToEventTelemetry(this ICollection<PerformanceCounterSample> performanceCounterSamples, string name)
+        public static EventTelemetry ToEventTelemetry(this ICollection<PerformanceCounterSample> performanceCounterSamples, string name, DateTime sampledUtc)
         {
             // TODO: should we try to capture the in range idea here?
             var metrics = performanceCounterSamples.ToDictionary(k => k.Description.ToString(), v => (decimal?)v.Value);
             var properties = new Dictionary<string, string>();
-            var result = new EventTelemetry(name, properties, metrics);
+            var result = new EventTelemetry(sampledUtc, name, properties, metrics);
             return result;
         }
     }

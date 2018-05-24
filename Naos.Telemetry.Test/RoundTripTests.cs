@@ -31,12 +31,13 @@ namespace Naos.Telemetry.Test
         public static void DiagnosticsTelemetry___can_roundtrip_DescribedSerialization_to_json()
         {
             // Arrange
+            var sampledUtc = DateTime.UtcNow;
             var machineDetails = DomainFactory.CreateMachineDetails();
             var processDetails = DomainFactory.CreateProcessDetails();
             var assemblyFilePath = typeof(IAmTelemetryItem).Assembly.GetCodeBaseAsPathInsteadOfUri();
             var assemblies = DiagnosticsTelemetry.GetSiblingAssemblyFilePaths(assemblyFilePath).Select(_ => AssemblyDetails.CreateFromFile(_)).ToList();
 
-            var diagnosticsTelemetry = new DiagnosticsTelemetry(machineDetails, processDetails, assemblies);
+            var diagnosticsTelemetry = new DiagnosticsTelemetry(sampledUtc, machineDetails, processDetails, assemblies);
             var serializationDescription = new SerializationDescription(SerializationFormat.Json, SerializationRepresentation.String);
 
             // Act

@@ -12,13 +12,18 @@ namespace Naos.Telemetry.StorageModel
     public static class MigrationVersion
     {
         /// <summary>
+        /// Version of the migration that creates the table for raw items to be processed.
+        /// </summary>
+        public const long CreateRawQueueSchema = 0;
+
+        /// <summary>
         /// Version of the migration that creates the table for <see cref="Domain.DiagnosticsTelemetry" />
         /// </summary>
-        public const long CreateDiagnosticsSchema = 0;
+        public const long CreateDiagnosticsSchema = 1;
 
         /// <summary>
         /// Version of the migration that creates the table for <see cref="Domain.EventTelemetry"/>
         /// </summary>
-        public const long CreateEventSchema = 1;
+        public const long CreateEventSchema = 2;
     }
 }

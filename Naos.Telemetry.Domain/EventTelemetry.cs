@@ -22,20 +22,25 @@ namespace Naos.Telemetry.Domain
         /// <summary>
         /// Initializes a new instance of the <see cref="EventTelemetry"/> class.
         /// </summary>
+        /// <param name="sampledUtc">Sampled date and time in UTC.</param>
         /// <param name="name">Name of the event.</param>
         /// <param name="propertyNameToValueMap">Optional properties associated with the event.</param>
         /// <param name="metricNameToValueMap">Optional metrics associated with the event.</param>
-        public EventTelemetry(string name, IReadOnlyDictionary<string, string> propertyNameToValueMap = null, IReadOnlyDictionary<string, decimal?> metricNameToValueMap = null)
+        public EventTelemetry(DateTime sampledUtc, string name, IReadOnlyDictionary<string, string> propertyNameToValueMap = null, IReadOnlyDictionary<string, decimal?> metricNameToValueMap = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentNullException(nameof(name));
             }
 
+            this.SampledUtc = sampledUtc;
             this.Name = name;
             this.propertyNameToValueMap = propertyNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, string>();
             this.metricNameToValueMap = metricNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, decimal?>();
         }
+
+        /// <inheritdoc />
+        public DateTime SampledUtc { get; private set; }
 
         /// <summary>
         /// Gets the name of the event.

@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="Migration_1_CreateEvent.cs" company="Naos">
+// <copyright file="Migration_2_CreateEvent.cs" company="Naos">
 //    Copyright (c) Naos 2017. All Rights Reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ namespace Naos.Telemetry.StorageModel
     /// </summary>
     [Migration(MigrationVersion.CreateEventSchema, TransactionBehavior.None)]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1707:IdentifiersShouldNotContainUnderscores", Justification = "Improves readability.")]
-    public class Migration_1_CreateEvent : Migration
+    public class Migration_2_CreateEvent : Migration
     {
         /// <inheritdoc />
         public override void Up()

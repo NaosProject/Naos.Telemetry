@@ -51,15 +51,20 @@ namespace Naos.Telemetry.Domain
         /// <summary>
         /// Initializes a new instance of the <see cref="DiagnosticsTelemetry"/> class.
         /// </summary>
+        /// <param name="sampledUtc">Sampled date and time in UTC.</param>
         /// <param name="machineDetails">Machine details.</param>
         /// <param name="processDetails">Process details.</param>
         /// <param name="processSiblingAssemblies">Assemblies of the process.</param>
-        public DiagnosticsTelemetry(MachineDetails machineDetails, ProcessDetails processDetails, IReadOnlyCollection<AssemblyDetails> processSiblingAssemblies)
+        public DiagnosticsTelemetry(DateTime sampledUtc, MachineDetails machineDetails, ProcessDetails processDetails, IReadOnlyCollection<AssemblyDetails> processSiblingAssemblies)
         {
+            this.SampledUtc = sampledUtc;
             this.MachineDetails = machineDetails;
             this.ProcessDetails = processDetails;
             this.ProcessSiblingAssemblies = processSiblingAssemblies;
         }
+
+        /// <inheritdoc />
+        public DateTime SampledUtc { get; private set; }
 
         /// <summary>
         /// Gets the machine details.

@@ -6,14 +6,18 @@
 
 namespace Naos.Telemetry.Domain
 {
+    using System;
     using System.Collections.Generic;
 
     /// <summary>
     /// Interface to define that an object is a telemetry item.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1040:AvoidEmptyInterfaces", Justification = "Want an interface NOT an attribute.")]
     public interface IAmTelemetryItem
     {
+        /// <summary>
+        /// Gets the sampled date and time in UTC.
+        /// </summary>
+        DateTime SampledUtc { get; }
     }
 
     /// <summary>
@@ -21,6 +25,14 @@ namespace Naos.Telemetry.Domain
     /// </summary>
     public class NullTelemetryItem : IAmTelemetryItem
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NullTelemetryItem"/> class.
+        /// </summary>
+        /// <param name="sampledUtc">Sampled date and time in UTC.</param>
+        public NullTelemetryItem(DateTime sampledUtc) => this.SampledUtc = sampledUtc;
+
+        /// <inheritdoc />
+        public DateTime SampledUtc { get; private set; }
     }
 
     /// <summary>
@@ -42,8 +54,16 @@ namespace Naos.Telemetry.Domain
         /// <summary>
         /// Initializes a new instance of the <see cref="AggregateTelemetryItem"/> class.
         /// </summary>
+        /// <param name="sampledUtc">Sampled date and time in UTC.</param>
         /// <param name="telemetryItems">Telemetry items.</param>
-        public AggregateTelemetryItem(IReadOnlyCollection<IAmTelemetryItem> telemetryItems) => this.TelemetryItems = telemetryItems;
+        public AggregateTelemetryItem(DateTime sampledUtc, IReadOnlyCollection<IAmTelemetryItem> telemetryItems)
+        {
+            this.SampledUtc = sampledUtc;
+            this.TelemetryItems = telemetryItems;
+        }
+
+        /// <inheritdoc />
+        public DateTime SampledUtc { get; private set; }
 
         /// <inheritdoc />
         public IReadOnlyCollection<IAmTelemetryItem> TelemetryItems { get; private set; }

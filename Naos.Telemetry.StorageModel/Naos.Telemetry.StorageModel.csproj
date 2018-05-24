@@ -9,10 +9,11 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Naos.Telemetry.StorageModel</RootNamespace>
     <AssemblyName>Naos.Telemetry.StorageModel</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -52,10 +53,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Migrations\RawQueueSchema.cs" />
     <Compile Include="Migrations\EventSchema.cs" />
     <Compile Include="Migrations\DiagnosticsSchema.cs" />
-    <Compile Include="Migrations\Migration_1_CreateEvent.cs" />
-    <Compile Include="Migrations\Migration_0_CreateDiagnostics.cs" />
+    <Compile Include="Migrations\Migration_0_CreateRawQueue.cs" />
+    <Compile Include="Migrations\Migration_2_CreateEvent.cs" />
+    <Compile Include="Migrations\Migration_1_CreateDiagnostics.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TelemetryDatabase.cs" />
     <Compile Include="Migrations\MigrationVersion.cs" />
