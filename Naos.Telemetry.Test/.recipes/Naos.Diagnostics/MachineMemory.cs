@@ -22,7 +22,7 @@ namespace Naos.Diagnostics.Recipes
 #endif
     static class MachineMemory
     {
-        private const decimal DivideByToGetGb = 1024m / 1024m / 1024m;
+        private const decimal DivideByToGetGb = 1024m * 1024m * 1024m;
 
         /// <summary>
         /// Gets the total physical memory of this machine in gigabytes.

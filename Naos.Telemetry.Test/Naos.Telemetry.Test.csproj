@@ -54,8 +54,8 @@
     <Reference Include="Naos.Database.Migrator, Version=1.1.182.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Naos.Database.Migrator.1.1.182\lib\net461\Naos.Database.Migrator.dll</HintPath>
     </Reference>
-    <Reference Include="Naos.Diagnostics.Domain, Version=1.2.7.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Naos.Diagnostics.Domain.1.2.7\lib\net461\Naos.Diagnostics.Domain.dll</HintPath>
+    <Reference Include="Naos.Diagnostics.Domain, Version=1.2.8.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Naos.Diagnostics.Domain.1.2.8\lib\net461\Naos.Diagnostics.Domain.dll</HintPath>
     </Reference>
     <Reference Include="Naos.Serialization.Domain, Version=1.0.50.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Naos.Serialization.Domain.1.0.50\lib\net461\Naos.Serialization.Domain.dll</HintPath>
