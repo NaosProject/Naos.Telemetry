@@ -24,11 +24,10 @@ namespace Naos.Telemetry.StorageModel
             this.Create.Table(RawQueueSchema.TableName)
                 .WithColumn(RawQueueSchema.Id).AsGuid().PrimaryKey().NotNullable()
                 .WithColumn(RawQueueSchema.SampledUtc).AsDateTime().NotNullable()
-                .WithColumn(RawQueueSchema.TelemetryObjectJson).AsString().NotNullable()
-                .WithColumn(RawQueueSchema.TelemetryObjectTypeDescriptionJson).AsString().NotNullable()
-                .WithColumn(RawQueueSchema.LogItemKindJson).AsString().NotNullable()
-                .WithColumn(RawQueueSchema.LogItemContextJson).AsString().NotNullable()
-                .WithColumn(RawQueueSchema.LogItemCorrelationsJson).AsString().NotNullable()
+                .WithColumn(RawQueueSchema.TelemetryObjectDescribedSerializationJson).AsString(int.MaxValue).NotNullable()
+                .WithColumn(RawQueueSchema.LogItemKindJson).AsString(int.MaxValue).NotNullable()
+                .WithColumn(RawQueueSchema.LogItemContextJson).AsString(int.MaxValue).NotNullable()
+                .WithColumn(RawQueueSchema.LogItemCorrelationsJson).AsString(int.MaxValue).NotNullable()
                 .WithColumn(RawQueueSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
         }
 

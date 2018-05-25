@@ -18,24 +18,21 @@ namespace Naos.Telemetry.Domain
         /// </summary>
         /// <param name="id">ID of the item.</param>
         /// <param name="sampledUtc">Sampled date time in UTC.</param>
-        /// <param name="telemetryObjectJson">JSON representation of the telemetry object.</param>
-        /// <param name="telemetryObjectTypeDescriptionJson">JSON representation of the telemetry object's type description.</param>
+        /// <param name="telemetryObjectDescribedSerializationJson">JSON representation of the telemetry object.</param>
         /// <param name="logItemKindJson">JSON representation of the log item kind.</param>
         /// <param name="logItemContextJson">JSON representation of the log item context.</param>
         /// <param name="logItemCorrelationsJson">JSON representation of the log item correlations.</param>
         public RawQueueItem(
             Guid id,
             DateTime sampledUtc,
-            string telemetryObjectJson,
-            string telemetryObjectTypeDescriptionJson,
+            string telemetryObjectDescribedSerializationJson,
             string logItemKindJson,
             string logItemContextJson,
             string logItemCorrelationsJson)
         {
             this.Id = id;
             this.SampledUtc = sampledUtc;
-            this.TelemetryObjectJson = telemetryObjectJson;
-            this.TelemetryObjectTypeDescriptionJson = telemetryObjectTypeDescriptionJson;
+            this.TelemetryObjectDescribedSerializationJson = telemetryObjectDescribedSerializationJson;
             this.LogItemKindJson = logItemKindJson;
             this.LogItemContextJson = logItemContextJson;
             this.LogItemCorrelationsJson = logItemCorrelationsJson;
@@ -52,14 +49,9 @@ namespace Naos.Telemetry.Domain
         public DateTime SampledUtc { get; private set; }
 
         /// <summary>
-        /// Gets the JSON representation of the telemetry object.
+        /// Gets the JSON representation of the telemetry object as a described serialization.
         /// </summary>
-        public string TelemetryObjectJson { get; private set; }
-
-        /// <summary>
-        /// Gets the JSON representation of the telemetry object's type description.
-        /// </summary>
-        public string TelemetryObjectTypeDescriptionJson { get; private set; }
+        public string TelemetryObjectDescribedSerializationJson { get; private set; }
 
         /// <summary>
         /// Gets the JSON representation of the log item kind.

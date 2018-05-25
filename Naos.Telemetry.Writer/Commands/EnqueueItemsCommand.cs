@@ -74,8 +74,7 @@ namespace Naos.Telemetry.Writer
                                 {
                                     new ColumnObject(RawQueueSchema.Id, DbType.Guid, item.Id),
                                     new ColumnObject(RawQueueSchema.SampledUtc, DbType.DateTime, item.SampledUtc),
-                                    new ColumnObject(RawQueueSchema.TelemetryObjectJson, DbType.String, item.TelemetryObjectJson),
-                                    new ColumnObject(RawQueueSchema.TelemetryObjectTypeDescriptionJson, DbType.String, item.TelemetryObjectTypeDescriptionJson),
+                                    new ColumnObject(RawQueueSchema.TelemetryObjectDescribedSerializationJson, DbType.String, item.TelemetryObjectDescribedSerializationJson),
                                     new ColumnObject(RawQueueSchema.LogItemKindJson, DbType.String, item.LogItemKindJson),
                                     new ColumnObject(RawQueueSchema.LogItemContextJson, DbType.String, item.LogItemContextJson),
                                     new ColumnObject(RawQueueSchema.LogItemCorrelationsJson, DbType.String, item.LogItemCorrelationsJson),

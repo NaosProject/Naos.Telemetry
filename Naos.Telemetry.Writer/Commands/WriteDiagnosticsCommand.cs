@@ -73,53 +73,36 @@ namespace Naos.Telemetry.Writer
                 var transaction = connection.BeginTransaction();
                 try
                 {
-                    var machineDetailsId = Guid.NewGuid();
-                    var machineDetailsCommand = this.BuildMachineDetailsCommand(
-                        connection,
-                        transaction,
-                        machineDetailsId,
-                        command.Item.MachineDetails);
-                    machineDetailsCommand.ExecuteNonQuery();
-
-                    var processDetailsId = Guid.NewGuid();
-                    var processDetailsCommand = this.BuildProcessDetailsCommand(
-                        connection,
-                        transaction,
-                        processDetailsId,
-                        command.Item.ProcessDetails);
-                    processDetailsCommand.ExecuteNonQuery();
-
                     var diagnosticsId = Guid.NewGuid();
                     var diagnosticsCommand = this.BuildDiagnosticsCommand(
                         connection,
                         transaction,
                         command.Item.SampledUtc,
-                        diagnosticsId,
-                        machineDetailsId,
-                        processDetailsId);
+                        diagnosticsId);
                     diagnosticsCommand.ExecuteNonQuery();
 
-                    var committedAssemblyIds = new List<Guid>();
+                    var machineDetailsCommand = this.BuildMachineDetailsCommand(
+                        connection,
+                        transaction,
+                        diagnosticsId,
+                        command.Item.MachineDetails);
+                    machineDetailsCommand.ExecuteNonQuery();
+
+                    var processDetailsCommand = this.BuildProcessDetailsCommand(
+                        connection,
+                        transaction,
+                        diagnosticsId,
+                        command.Item.ProcessDetails);
+                    processDetailsCommand.ExecuteNonQuery();
+
                     foreach (var assembly in command.Item.ProcessSiblingAssemblies)
                     {
-                        var assemblyId = Guid.NewGuid();
                         var assemblyCommand = this.BuildAssemblyDetailsCommand(
                             connection,
                             transaction,
-                            assemblyId,
+                            diagnosticsId,
                             assembly);
                         assemblyCommand.ExecuteNonQuery();
-                        committedAssemblyIds.Add(assemblyId);
-                    }
-
-                    foreach (var assemblyId in committedAssemblyIds)
-                    {
-                        var assemblyDiagnosticsCrossReferenceCommand = this.BuildAssemblyDiagnosticsCrossReferenceCommand(
-                            connection,
-                            transaction,
-                            diagnosticsId,
-                            assemblyId);
-                        assemblyDiagnosticsCrossReferenceCommand.ExecuteNonQuery();
                     }
 
                     transaction.Commit();
@@ -143,18 +126,41 @@ namespace Naos.Telemetry.Writer
             }
         }
 
-        private IDbCommand BuildMachineDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid machineDetailsId, MachineDetails machineDetails)
+        private IDbCommand BuildDiagnosticsCommand(IDbConnection connection, IDbTransaction transaction, DateTime sampledUtc, Guid diagnosticsId)
         {
             var columnSet = new[]
                                 {
-                                    new ColumnObject(MachineDetailsSchema.Id, DbType.Guid, machineDetailsId),
+                                    new ColumnObject(DiagnosticsSchema.Id, DbType.Guid, diagnosticsId),
+                                    new ColumnObject(DiagnosticsSchema.SampledUtc, DbType.DateTime, sampledUtc),
+                                };
+
+            var sql = SqlCommon.BuildInsertStatement(DiagnosticsSchema.TableName, columnSet);
+
+            var parameters = SqlCommon.BuildParameters(columnSet);
+
+            var command = DatabaseHelper.BuildCommand(
+                connection,
+                sql,
+                parameters,
+                transaction: transaction,
+                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+
+            return command;
+        }
+
+        private IDbCommand BuildMachineDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, MachineDetails machineDetails)
+        {
+            var columnSet = new[]
+                                {
+                                    new ColumnObject(MachineDetailsSchema.Id, DbType.Guid, Guid.NewGuid()),
+                                    new ColumnObject(MachineDetailsSchema.DiagnosticsId, DbType.Guid, diagnosticsId),
                                     new ColumnObject(MachineDetailsSchema.MachineName, DbType.String, machineDetails.GetTypedMachineNameKindToNameMap().GetMachineName()),
                                     new ColumnObject(MachineDetailsSchema.MachineNameMapJson, DbType.String, machineDetails.MachineNameKindToNameMap),
-                                    new ColumnObject(MachineDetailsSchema.ProcessorCount, DbType.Int16, machineDetails.ProcessorCount),
-                                    new ColumnObject(MachineDetailsSchema.PhysicalMemoryInGb, DbType.Int16, machineDetails.GetTypedMemoryKindToValueInGbMap()[MachineMemoryKind.TotalPhysical]),
+                                    new ColumnObject(MachineDetailsSchema.ProcessorCount, DbType.Int32, machineDetails.ProcessorCount),
+                                    new ColumnObject(MachineDetailsSchema.PhysicalMemoryInGb, DbType.Decimal, machineDetails.GetTypedMemoryKindToValueInGbMap()[MachineMemoryKind.TotalPhysical]),
                                     new ColumnObject(MachineDetailsSchema.MemoryMapJson, DbType.String, machineDetails.MemoryKindToValueInGbMap),
                                     new ColumnObject(MachineDetailsSchema.OperatingSystemIs64Bit, DbType.Boolean, machineDetails.OperatingSystemIs64Bit),
-                                    new ColumnObject(MachineDetailsSchema.OperatingSystem, DbType.String, machineDetails.OperatingSystem),
+                                    new ColumnObject(MachineDetailsSchema.OperatingSystemJson, DbType.String, machineDetails.OperatingSystem),
                                     new ColumnObject(MachineDetailsSchema.ClrVersion, DbType.String, machineDetails.ClrVersion),
                                 };
 
@@ -172,11 +178,12 @@ namespace Naos.Telemetry.Writer
             return command;
         }
 
-        private IDbCommand BuildProcessDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid processDetailsId, ProcessDetails processDetails)
+        private IDbCommand BuildProcessDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, ProcessDetails processDetails)
         {
             var columnSet = new[]
                                 {
-                                    new ColumnObject(ProcessDetailsSchema.Id, DbType.Guid, processDetailsId),
+                                    new ColumnObject(ProcessDetailsSchema.Id, DbType.Guid, Guid.NewGuid()),
+                                    new ColumnObject(ProcessDetailsSchema.DiagnosticsId, DbType.Guid, diagnosticsId),
                                     new ColumnObject(ProcessDetailsSchema.Name, DbType.String, processDetails.Name),
                                     new ColumnObject(ProcessDetailsSchema.FilePath, DbType.String, processDetails.FilePath),
                                     new ColumnObject(ProcessDetailsSchema.FileVersion, DbType.String, processDetails.FileVersion),
@@ -198,65 +205,19 @@ namespace Naos.Telemetry.Writer
             return command;
         }
 
-        private IDbCommand BuildDiagnosticsCommand(IDbConnection connection, IDbTransaction transaction, DateTime sampledUtc, Guid diagnosticsId, Guid machineDetailsId, Guid processDetailsId)
+        private IDbCommand BuildAssemblyDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, AssemblyDetails assemblyDetails)
         {
             var columnSet = new[]
                                 {
-                                    new ColumnObject(DiagnosticsSchema.Id, DbType.Guid, diagnosticsId),
-                                    new ColumnObject(DiagnosticsSchema.MachineDetailsId, DbType.Guid, machineDetailsId),
-                                    new ColumnObject(DiagnosticsSchema.ProcessDetailsId, DbType.Guid, processDetailsId),
-                                    new ColumnObject(DiagnosticsSchema.SampledUtc, DbType.DateTime, sampledUtc),
-                                };
-
-            var sql = SqlCommon.BuildInsertStatement(DiagnosticsSchema.TableName, columnSet);
-
-            var parameters = SqlCommon.BuildParameters(columnSet);
-
-            var command = DatabaseHelper.BuildCommand(
-                connection,
-                sql,
-                parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
-
-            return command;
-        }
-
-        private IDbCommand BuildAssemblyDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid assemblyDetailsId, AssemblyDetails assemblyDetails)
-        {
-            var columnSet = new[]
-                                {
-                                    new ColumnObject(AssemblyDetailsSchema.Id, DbType.Guid, assemblyDetailsId),
+                                    new ColumnObject(AssemblyDetailsSchema.Id, DbType.Guid, Guid.NewGuid()),
+                                    new ColumnObject(AssemblyDetailsSchema.DiagnosticsId, DbType.Guid, diagnosticsId),
                                     new ColumnObject(AssemblyDetailsSchema.Name, DbType.String, assemblyDetails.Name),
-                                    new ColumnObject(AssemblyDetailsSchema.Version, DbType.String, assemblyDetails.Version),
+                                    new ColumnObject(AssemblyDetailsSchema.VersionJson, DbType.String, assemblyDetails.Version),
                                     new ColumnObject(AssemblyDetailsSchema.FilePath, DbType.String, assemblyDetails.FilePath),
                                     new ColumnObject(AssemblyDetailsSchema.FrameworkVersion, DbType.String, assemblyDetails.FrameworkVersion),
                                 };
 
             var sql = SqlCommon.BuildInsertStatement(AssemblyDetailsSchema.TableName, columnSet);
-
-            var parameters = SqlCommon.BuildParameters(columnSet);
-
-            var command = DatabaseHelper.BuildCommand(
-                connection,
-                sql,
-                parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
-
-            return command;
-        }
-
-        private IDbCommand BuildAssemblyDiagnosticsCrossReferenceCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, Guid assemblyDetailsId)
-        {
-            var columnSet = new[]
-                                {
-                                    new ColumnObject(DiagnosticsAssemblyCrossReferenceSchema.Id, DbType.Guid, Guid.NewGuid()),
-                                    new ColumnObject(DiagnosticsAssemblyCrossReferenceSchema.DiagnosticsId, DbType.Guid, diagnosticsId),
-                                    new ColumnObject(DiagnosticsAssemblyCrossReferenceSchema.AssemblyDetailsId, DbType.Guid, assemblyDetailsId),
-                                };
-
-            var sql = SqlCommon.BuildInsertStatement(DiagnosticsAssemblyCrossReferenceSchema.TableName, columnSet);
 
             var parameters = SqlCommon.BuildParameters(columnSet);
 

@@ -51,9 +51,6 @@ namespace Naos.Telemetry.Writer
                 if (idx != columns.Count - 1)
                 {
                     builder.Append(",");
-                }
-                else
-                {
                     idx++;
                 }
             }
@@ -63,25 +60,11 @@ namespace Naos.Telemetry.Writer
             idx = 0;
             foreach (var column in columns)
             {
-                if (column.DbType == DbType.String)
-                {
-                    var preppedValue = column.Value;
-                    if (preppedValue is string)
-                    {
-                        builder.Append(Invariant($"'@{column.Name}'"));
-                    }
-                    else
-                    {
-                        builder.Append(Invariant($"@{column.Name}"));
-                    }
-                }
+                builder.Append(Invariant($"@{column.Name}"));
 
                 if (idx != columns.Count - 1)
                 {
                     builder.Append(",");
-                }
-                else
-                {
                     idx++;
                 }
             }
@@ -107,7 +90,7 @@ namespace Naos.Telemetry.Writer
                 column =>
                     {
                         var preppedValue = column.Value;
-                        if (column.DbType == DbType.String && !(preppedValue is string))
+                        if (column.DbType == DbType.String && preppedValue != null && !(preppedValue is string))
                         {
                             preppedValue = TelemetryWriter.JsonSerializer.SerializeToString(preppedValue);
                         }

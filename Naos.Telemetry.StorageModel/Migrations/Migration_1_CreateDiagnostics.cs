@@ -22,47 +22,42 @@ namespace Naos.Telemetry.StorageModel
         /// <inheritdoc />
         public override void Up()
         {
+            this.Create.Table(DiagnosticsSchema.TableName)
+                .WithColumn(DiagnosticsSchema.Id).AsGuid().PrimaryKey().NotNullable()
+                .WithColumn(DiagnosticsSchema.SampledUtc).AsDateTime().NotNullable().Indexed(Invariant($"IX_{DiagnosticsSchema.TableName}_{DiagnosticsSchema.SampledUtc}"))
+                .WithColumn(DiagnosticsSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
+
             this.Create.Table(MachineDetailsSchema.TableName)
                 .WithColumn(MachineDetailsSchema.Id).AsGuid().PrimaryKey().NotNullable()
+                .WithColumn(MachineDetailsSchema.DiagnosticsId).AsGuid().NotNullable().ForeignKey(MachineDetailsSchema.ForeignKeyNameDiagnosticsId, DiagnosticsSchema.TableName, DiagnosticsSchema.Id)
                 .WithColumn(MachineDetailsSchema.MachineName).AsString().NotNullable()
-                .WithColumn(MachineDetailsSchema.MachineNameMapJson).AsString().NotNullable()
-                .WithColumn(MachineDetailsSchema.ProcessorCount).AsInt16().NotNullable()
-                .WithColumn(MachineDetailsSchema.PhysicalMemoryInGb).AsInt16().NotNullable()
-                .WithColumn(MachineDetailsSchema.MemoryMapJson).AsString().NotNullable()
+                .WithColumn(MachineDetailsSchema.MachineNameMapJson).AsString(int.MaxValue).NotNullable()
+                .WithColumn(MachineDetailsSchema.ProcessorCount).AsInt32().NotNullable()
+                .WithColumn(MachineDetailsSchema.PhysicalMemoryInGb).AsDecimal().NotNullable()
+                .WithColumn(MachineDetailsSchema.MemoryMapJson).AsString(int.MaxValue).NotNullable()
                 .WithColumn(MachineDetailsSchema.OperatingSystemIs64Bit).AsBoolean().NotNullable()
-                .WithColumn(MachineDetailsSchema.OperatingSystem).AsString().NotNullable()
-                .WithColumn(MachineDetailsSchema.ClrVersion).AsString().NotNullable()
+                .WithColumn(MachineDetailsSchema.OperatingSystemJson).AsString(1024).NotNullable()
+                .WithColumn(MachineDetailsSchema.ClrVersion).AsString(1024).NotNullable()
                 .WithColumn(MachineDetailsSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
 
             this.Create.Table(ProcessDetailsSchema.TableName)
                 .WithColumn(ProcessDetailsSchema.Id).AsGuid().PrimaryKey().NotNullable()
-                .WithColumn(ProcessDetailsSchema.Name).AsString().NotNullable()
-                .WithColumn(ProcessDetailsSchema.FilePath).AsString().NotNullable()
-                .WithColumn(ProcessDetailsSchema.FileVersion).AsString().NotNullable()
-                .WithColumn(ProcessDetailsSchema.ProductVersion).AsString().NotNullable()
+                .WithColumn(ProcessDetailsSchema.DiagnosticsId).AsGuid().NotNullable().ForeignKey(ProcessDetailsSchema.ForeignKeyNameDiagnosticsId, DiagnosticsSchema.TableName, DiagnosticsSchema.Id)
+                .WithColumn(ProcessDetailsSchema.Name).AsString(1024).NotNullable()
+                .WithColumn(ProcessDetailsSchema.FilePath).AsString(int.MaxValue).NotNullable()
+                .WithColumn(ProcessDetailsSchema.FileVersion).AsString(1024).NotNullable()
+                .WithColumn(ProcessDetailsSchema.ProductVersion).AsString(1024).NotNullable()
                 .WithColumn(ProcessDetailsSchema.RunningAsAdmin).AsBoolean().NotNullable()
                 .WithColumn(ProcessDetailsSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
 
             this.Create.Table(AssemblyDetailsSchema.TableName)
                 .WithColumn(AssemblyDetailsSchema.Id).AsGuid().PrimaryKey().NotNullable()
-                .WithColumn(AssemblyDetailsSchema.Name).AsString().NotNullable()
-                .WithColumn(AssemblyDetailsSchema.Version).AsString().NotNullable()
-                .WithColumn(AssemblyDetailsSchema.FilePath).AsString().NotNullable()
-                .WithColumn(AssemblyDetailsSchema.FrameworkVersion).AsString().NotNullable()
+                .WithColumn(AssemblyDetailsSchema.DiagnosticsId).AsGuid().NotNullable().ForeignKey(AssemblyDetailsSchema.ForeignKeyNameDiagnosticsId, DiagnosticsSchema.TableName, DiagnosticsSchema.Id)
+                .WithColumn(AssemblyDetailsSchema.Name).AsString(1024).NotNullable()
+                .WithColumn(AssemblyDetailsSchema.VersionJson).AsString(1024).NotNullable()
+                .WithColumn(AssemblyDetailsSchema.FilePath).AsString(int.MaxValue).NotNullable()
+                .WithColumn(AssemblyDetailsSchema.FrameworkVersion).AsString(1024).NotNullable()
                 .WithColumn(AssemblyDetailsSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-            this.Create.Table(DiagnosticsSchema.TableName)
-                .WithColumn(DiagnosticsSchema.Id).AsGuid().PrimaryKey().NotNullable()
-                .WithColumn(DiagnosticsSchema.SampledUtc).AsDateTime().NotNullable().Indexed(Invariant($"IX_{DiagnosticsSchema.TableName}_{DiagnosticsSchema.SampledUtc}"))
-                .WithColumn(DiagnosticsSchema.MachineDetailsId).AsGuid().NotNullable().ForeignKey(DiagnosticsSchema.ForeignKeyNameMachineDetailsId, MachineDetailsSchema.TableName, MachineDetailsSchema.Id)
-                .WithColumn(DiagnosticsSchema.ProcessDetailsId).AsGuid().NotNullable().ForeignKey(DiagnosticsSchema.ForeignKeyNameProcessDetailsId, ProcessDetailsSchema.TableName, ProcessDetailsSchema.Id)
-                .WithColumn(DiagnosticsSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-            this.Create.Table(DiagnosticsAssemblyCrossReferenceSchema.TableName)
-                .WithColumn(DiagnosticsAssemblyCrossReferenceSchema.Id).AsGuid().PrimaryKey().NotNullable()
-                .WithColumn(DiagnosticsAssemblyCrossReferenceSchema.DiagnosticsId).AsGuid().NotNullable().ForeignKey(DiagnosticsAssemblyCrossReferenceSchema.ForeignKeyNameDiagnosticsId, DiagnosticsSchema.TableName, DiagnosticsSchema.Id)
-                .WithColumn(DiagnosticsAssemblyCrossReferenceSchema.AssemblyDetailsId).AsGuid().NotNullable().ForeignKey(DiagnosticsAssemblyCrossReferenceSchema.ForeignKeyNameAssemblyDetailsId, AssemblyDetailsSchema.TableName, AssemblyDetailsSchema.Id)
-                .WithColumn(DiagnosticsAssemblyCrossReferenceSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
         }
 
         /// <inheritdoc />

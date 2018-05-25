@@ -17,14 +17,6 @@ namespace Naos.Telemetry.StorageModel
 
         public const string Id = "Id";
 
-        public const string MachineDetailsId = "MachineDetailsId";
-
-        public static readonly string ForeignKeyNameMachineDetailsId = Invariant($"FK__{TableName}_{MachineDetailsId}__{MachineDetailsSchema.TableName}_{MachineDetailsSchema.Id}");
-
-        public const string ProcessDetailsId = "ProcessDetailsId";
-
-        public static readonly string ForeignKeyNameProcessDetailsId = Invariant($"FK__{TableName}_{ProcessDetailsId}__{ProcessDetailsSchema.TableName}_{ProcessDetailsSchema.Id}");
-
         public const string SampledUtc = "SampledUtc";
 
         public const string RowCreatedUtc = "RowCreatedUtc";
@@ -35,6 +27,10 @@ namespace Naos.Telemetry.StorageModel
         public const string TableName = "MachineDetails";
 
         public const string Id = "Id";
+
+        public const string DiagnosticsId = "DiagnosticsId";
+
+        public static readonly string ForeignKeyNameDiagnosticsId = Invariant($"FK__{TableName}_{DiagnosticsId}__{DiagnosticsSchema.TableName}_{DiagnosticsSchema.Id}");
 
         public const string MachineName = "MachineName";
 
@@ -49,7 +45,7 @@ namespace Naos.Telemetry.StorageModel
 
         public const string OperatingSystemIs64Bit = "OperatingSystemIs64Bit";
 
-        public const string OperatingSystem = "OperatingSystem";
+        public const string OperatingSystemJson = "OperatingSystemJson";
 
         public const string ClrVersion = "ClrVersion";
 
@@ -61,6 +57,10 @@ namespace Naos.Telemetry.StorageModel
         public const string TableName = "ProcessDetails";
 
         public const string Id = "Id";
+
+        public const string DiagnosticsId = "DiagnosticsId";
+
+        public static readonly string ForeignKeyNameDiagnosticsId = Invariant($"FK__{TableName}_{DiagnosticsId}__{DiagnosticsSchema.TableName}_{DiagnosticsSchema.Id}");
 
         public const string Name = "Name";
 
@@ -81,30 +81,17 @@ namespace Naos.Telemetry.StorageModel
 
         public const string Id = "Id";
 
-        public const string Name = "Name";
-
-        public const string Version = "Version";
-
-        public const string FilePath = "FilePath";
-
-        public const string FrameworkVersion = "FrameworkVersion";
-
-        public const string RowCreatedUtc = "RowCreatedUtc";
-    }
-
-    public static class DiagnosticsAssemblyCrossReferenceSchema
-    {
-        public const string TableName = "DiagnosticsAssemblyCrossReference";
-
-        public const string Id = "Id";
-
         public const string DiagnosticsId = "DiagnosticsId";
 
         public static readonly string ForeignKeyNameDiagnosticsId = Invariant($"FK__{TableName}_{DiagnosticsId}__{DiagnosticsSchema.TableName}_{DiagnosticsSchema.Id}");
 
-        public const string AssemblyDetailsId = "AssemblyDetailsId";
+        public const string Name = "Name";
 
-        public static readonly string ForeignKeyNameAssemblyDetailsId = Invariant($"FK__{TableName}_{AssemblyDetailsId}__{AssemblyDetailsSchema.TableName}_{AssemblyDetailsSchema.Id}");
+        public const string VersionJson = "VersionJson";
+
+        public const string FilePath = "FilePath";
+
+        public const string FrameworkVersion = "FrameworkVersion";
 
         public const string RowCreatedUtc = "RowCreatedUtc";
     }

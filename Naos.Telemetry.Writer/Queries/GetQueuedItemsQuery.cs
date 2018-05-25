@@ -46,7 +46,7 @@ namespace Naos.Telemetry.Writer
         /// <inheritdoc />
         public async Task<IReadOnlyCollection<RawQueueItem>> HandleAsync(GetQueuedItemsQuery query)
         {
-            var sql = Invariant($"SELECT {RawQueueSchema.Id}, {RawQueueSchema.SampledUtc}, {RawQueueSchema.TelemetryObjectJson}, {RawQueueSchema.TelemetryObjectTypeDescriptionJson}, {RawQueueSchema.LogItemKindJson}, {RawQueueSchema.LogItemContextJson}, {RawQueueSchema.LogItemCorrelationsJson} FROM {RawQueueSchema.TableName}");
+            var sql = Invariant($"SELECT {RawQueueSchema.Id}, {RawQueueSchema.SampledUtc}, {RawQueueSchema.TelemetryObjectDescribedSerializationJson}, {RawQueueSchema.LogItemKindJson}, {RawQueueSchema.LogItemContextJson}, {RawQueueSchema.LogItemCorrelationsJson} FROM {RawQueueSchema.TableName}");
 
             using (var connection = await this.telemetryDatabase.CreateOpenConnectionAsync())
             {

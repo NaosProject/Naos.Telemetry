@@ -25,7 +25,9 @@ namespace Naos.Telemetry.Writer
         /// <summary>
         /// Serializer for the fields that are stored as JSON.
         /// </summary>
-        internal static readonly IStringSerializeAndDeserialize JsonSerializer = new NaosJsonSerializer();
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes", Justification = "Is immutable and I want a field.")]
+        public static readonly IStringSerializeAndDeserialize JsonSerializer = new NaosJsonSerializer();
+
         private readonly EnqueueItemsCommandHandler enqueueItemsCommandHandler;
         private readonly RemoveEnqueuedItemsCommandHandler removeEnqueuedItemsCommandHandler;
         private readonly WriteDiagnosticsCommandHandler writeDiagnosticsCommandHandler;

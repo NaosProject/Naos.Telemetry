@@ -17,9 +17,7 @@ namespace Naos.Telemetry.StorageModel
 
         public const string SampledUtc = "SampledUtc";
 
-        public const string TelemetryObjectJson = "TelemetryObjectJson";
-
-        public const string TelemetryObjectTypeDescriptionJson = "TelemetryObjectTypeDescriptionJson";
+        public const string TelemetryObjectDescribedSerializationJson = "TelemetryObjectDescribedSerializationJson";
 
         public const string LogItemKindJson = "LogItemKindJson";
 
