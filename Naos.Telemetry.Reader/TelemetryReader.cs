@@ -4,7 +4,7 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace Naos.Telemetry.Writer
+namespace Naos.Telemetry.Reader
 {
     using System;
     using System.Collections.Generic;

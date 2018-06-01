@@ -23,6 +23,7 @@ namespace Naos.Telemetry.Test
     using Naos.Serialization.Domain.Extensions;
     using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
+    using Naos.Telemetry.Reader;
     using Naos.Telemetry.StorageModel;
     using Naos.Telemetry.Writer;
 
