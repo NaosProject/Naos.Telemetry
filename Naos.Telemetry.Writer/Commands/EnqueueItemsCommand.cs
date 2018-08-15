@@ -61,7 +61,13 @@ namespace Naos.Telemetry.Writer
                 throw new ArgumentNullException(nameof(command));
             }
 
-            using (var connection = await this.telemetryDatabase.CreateOpenConnectionAsync())
+            await Task.Run(
+                () =>
+                    {
+                        /* no-op */
+                    });
+
+            using (var connection = this.telemetryDatabase.CreateConnection())
             {
                 var sqlCommand = this.BuildEnqueueCommand(connection, command.Item);
                 sqlCommand.ExecuteNonQuery();

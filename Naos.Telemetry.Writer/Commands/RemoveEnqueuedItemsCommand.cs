@@ -67,7 +67,7 @@ namespace Naos.Telemetry.Writer
 
             var sql = Invariant($"DELETE FROM {RawQueueSchema.TableName} WHERE {RawQueueSchema.Id} IN ({string.Join(",", command.IdsToRemove.Select(_ => Invariant($"'{_}'")))})");
 
-            using (var connection = await this.telemetryDatabase.CreateOpenConnectionAsync())
+            using (var connection = this.telemetryDatabase.CreateConnection())
             {
                 await connection.ExecuteAsync(sql, commandTimeout: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds);
             }
