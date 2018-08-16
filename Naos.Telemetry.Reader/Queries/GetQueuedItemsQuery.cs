@@ -48,7 +48,7 @@ namespace Naos.Telemetry.Reader
         {
             var sql = Invariant($"SELECT {RawQueueSchema.Id}, {RawQueueSchema.SampledUtc}, {RawQueueSchema.TelemetryObjectDescribedSerializationJson}, {RawQueueSchema.LogItemKindJson}, {RawQueueSchema.LogItemContextJson}, {RawQueueSchema.LogItemCorrelationsJson} FROM {RawQueueSchema.TableName}");
 
-            using (var connection = this.telemetryDatabase.CreateConnection())
+            using (var connection = this.telemetryDatabase.CreateOpenedConnection())
             {
                 var result = await connection.QueryAsync<RawQueueItem>(sql, commandTimeout: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds);
 

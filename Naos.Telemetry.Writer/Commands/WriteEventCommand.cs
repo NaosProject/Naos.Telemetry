@@ -67,7 +67,7 @@ namespace Naos.Telemetry.Writer
                         /* no-op */
                     });
 
-            using (var connection = this.telemetryDatabase.CreateConnection())
+            using (var connection = this.telemetryDatabase.CreateOpenedConnection())
             {
                 var transaction = connection.BeginTransaction();
                 try

@@ -27,6 +27,23 @@ namespace Naos.Telemetry.StorageModel
         /// Returns a database connection.
         /// </returns>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Disposing would defeat the purpose of this method - to create an open connection.")]
+        public SqlConnection CreateOpenedConnection()
+        {
+            // note: not using ConnectionSettings.CreateSqlConnection because that method
+            // causes a new connection pool to be generated for the same ConnectionSettings object.
+            // see: http://stackoverflow.com/questions/33106463/ado-net-is-not-closing-tcp-connections-fast-enough/33115406#33115406
+            var connection = new SqlConnection(this.ConnectionSettings.ToInsecureConnectionString());
+            connection.Open();
+            return connection;
+        }
+
+        /// <summary>
+        /// Create a connection.
+        /// </summary>
+        /// <returns>
+        /// Returns a database connection.
+        /// </returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Disposing would defeat the purpose of this method - to create an open connection.")]
         public SqlConnection CreateConnection()
         {
             // note: not using ConnectionSettings.CreateSqlConnection because that method
