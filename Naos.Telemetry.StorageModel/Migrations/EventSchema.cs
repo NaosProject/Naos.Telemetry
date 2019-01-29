@@ -17,9 +17,34 @@ namespace Naos.Telemetry.StorageModel
 
         public const string Id = "Id";
 
+        public const string EventSourceId = "EventSourceId";
+
+        public static readonly string ForeignKeyNameEventSourceId = Invariant($"FK__{TableName}_{EventSourceId}__{EventSourceSchema.TableName}_{EventSourceSchema.Id}");
+
         public const string Name = "Name";
 
         public const string SampledUtc = "SampledUtc";
+
+        public const string RowCreatedUtc = "RowCreatedUtc";
+    }
+
+    public static class EventSourceSchema
+    {
+        public const string TableName = "EventSource";
+
+        public const string Id = "Id";
+
+        public const string MachineName = "MachineName";
+
+        public const string ProcessName = "ProcessName";
+
+        public const string ProcessFileVersion = "ProcessFileVersion";
+
+        public const string CallingMethod = "CallingMethod";
+
+        public const string StackTrace = "StackTrace";
+
+        public const string CallingTypeJson = "CallingTypeJson";
 
         public const string RowCreatedUtc = "RowCreatedUtc";
     }

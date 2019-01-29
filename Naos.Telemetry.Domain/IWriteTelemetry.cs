@@ -35,7 +35,7 @@ namespace Naos.Telemetry.Domain
         /// </summary>
         /// <param name="eventTelemetryRecords"><see cref="EventTelemetry" /> records.</param>
         /// <returns>Task for async.</returns>
-        Task WriteEventTelemetryAsync(IReadOnlyCollection<EventTelemetry> eventTelemetryRecords);
+        Task WriteEventTelemetryAsync(IReadOnlyCollection<Tuple<EventTelemetrySource, EventTelemetry>> eventTelemetryRecords);
 
         /// <summary>
         /// Writes <see cref="DiagnosticsTelemetry" />.

@@ -7,7 +7,7 @@
 namespace Naos.Telemetry.StorageModel
 {
     using System;
-
+    using System.Collections.Generic;
     using FluentMigrator;
 
     using static System.FormattableString;
@@ -22,10 +22,32 @@ namespace Naos.Telemetry.StorageModel
         /// <inheritdoc />
         public override void Up()
         {
+            this.Create.Table(EventSourceSchema.TableName)
+                .WithColumn(EventSourceSchema.Id).AsGuid().PrimaryKey().NotNullable()
+                .WithColumn(EventSourceSchema.MachineName).AsString(1024).NotNullable()
+                .WithColumn(EventSourceSchema.ProcessName).AsString(1024).Nullable()
+                .WithColumn(EventSourceSchema.ProcessFileVersion).AsString(1024).Nullable()
+                .WithColumn(EventSourceSchema.CallingMethod).AsString(int.MaxValue).Nullable()
+                .WithColumn(EventSourceSchema.StackTrace).AsString(int.MaxValue).Nullable()
+                .WithColumn(EventSourceSchema.CallingTypeJson).AsString(int.MaxValue).Nullable()
+                .WithColumn(EventSourceSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
+
+            this.Insert.IntoTable(EventSourceSchema.TableName).Row(new Dictionary<string, object>
+            {
+                { EventSourceSchema.Id, Guid.Empty },
+                { EventSourceSchema.MachineName, "Unknown" },
+                { EventSourceSchema.ProcessName, "Unknown" },
+                { EventSourceSchema.ProcessFileVersion, "Unknown" },
+                { EventSourceSchema.CallingMethod, "Unknown" },
+                { EventSourceSchema.StackTrace, "Unknown" },
+                { EventSourceSchema.CallingTypeJson, "Unknown" },
+            });
+
             this.Create.Table(EventSchema.TableName)
                 .WithColumn(EventSchema.Id).AsGuid().PrimaryKey().NotNullable()
-                .WithColumn(EventSchema.SampledUtc).AsDateTime().NotNullable().Indexed(Invariant($"IX_{EventSchema.TableName}_{EventSchema.SampledUtc}"))
+                .WithColumn(EventSchema.EventSourceId).AsGuid().NotNullable().ForeignKey(EventSchema.ForeignKeyNameEventSourceId, EventSourceSchema.TableName, EventSourceSchema.Id)
                 .WithColumn(EventSchema.Name).AsString(1024).NotNullable()
+                .WithColumn(EventSchema.SampledUtc).AsDateTime().NotNullable().Indexed(Invariant($"IX_{EventSchema.TableName}_{EventSchema.SampledUtc}"))
                 .WithColumn(EventSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
 
             this.Create.Table(PropertySchema.TableName)
@@ -46,7 +68,10 @@ namespace Naos.Telemetry.StorageModel
         /// <inheritdoc />
         public override void Down()
         {
-            throw new NotImplementedException("Down migration not supported for this schema");
+            this.Delete.Table(MetricSchema.TableName);
+            this.Delete.Table(PropertySchema.TableName);
+            this.Delete.Table(EventSchema.TableName);
+            this.Delete.Table(EventSourceSchema.TableName);
         }
     }
 }

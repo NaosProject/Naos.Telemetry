@@ -9,7 +9,6 @@ namespace Naos.Telemetry.Writer
     using System;
     using System.Data;
     using System.Threading.Tasks;
-
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.StorageModel;
 
@@ -25,11 +24,18 @@ namespace Naos.Telemetry.Writer
         /// <summary>
         /// Initializes a new instance of the <see cref="WriteEventCommand"/> class.
         /// </summary>
+        /// <param name="source">Source of the item.</param>
         /// <param name="item">Item to add.</param>
-        public WriteEventCommand(EventTelemetry item)
+        public WriteEventCommand(EventTelemetrySource source, EventTelemetry item)
         {
+            this.Source = source;
             this.Item = item ?? throw new ArgumentNullException(nameof(item));
         }
+
+        /// <summary>
+        /// Gets the source context of the item.
+        /// </summary>
+        public EventTelemetrySource Source { get; private set; }
 
         /// <summary>
         /// Gets the item to write.
@@ -72,11 +78,26 @@ namespace Naos.Telemetry.Writer
                 var transaction = connection.BeginTransaction();
                 try
                 {
+                    var callingTypeJson = TelemetryWriter.JsonSerializer.SerializeToString(command.Source.CallingType);
+                    var eventSourceCommand = this.BuildEventSourceCommand(
+                        connection,
+                        transaction,
+                        command.Source.MachineName,
+                        command.Source.ProcessName,
+                        command.Source.ProcessFileVersion,
+                        command.Source.CallingMethod,
+                        command.Source.StackTrace,
+                        callingTypeJson);
+
+                    var eventSourceIdRaw = eventSourceCommand.ExecuteScalar();
+                    var eventSourceId = Guid.Parse(eventSourceIdRaw.ToString());
+
                     var eventId = Guid.NewGuid();
                     var eventCommand = this.BuildEventCommand(
                         connection,
                         transaction,
                         eventId,
+                        eventSourceId,
                         command.Item.Name,
                         command.Item.SampledUtc);
                     eventCommand.ExecuteNonQuery();
@@ -124,11 +145,49 @@ namespace Naos.Telemetry.Writer
             }
         }
 
-        private IDbCommand BuildEventCommand(IDbConnection connection, IDbTransaction transaction, Guid eventId, string name, DateTime sampledUtc)
+        private IDbCommand BuildEventSourceCommand(
+            IDbConnection connection,
+            IDbTransaction transaction,
+            string machineName,
+            string processName,
+            string processFileVersion,
+            string callingMethod,
+            string stackTrace,
+            string callingTypeJson)
+        {
+            var eventSourceId = Guid.NewGuid();
+            var columnSet = new[]
+                                {
+                                    new ColumnObject(EventSourceSchema.Id, DbType.Guid, eventSourceId),
+                                    new ColumnObject(EventSourceSchema.MachineName, DbType.String, machineName),
+                                    new ColumnObject(EventSourceSchema.ProcessName, DbType.String, processName),
+                                    new ColumnObject(EventSourceSchema.ProcessFileVersion, DbType.String, processFileVersion),
+                                    new ColumnObject(EventSourceSchema.CallingMethod, DbType.String, callingMethod),
+                                    new ColumnObject(EventSourceSchema.StackTrace, DbType.String, stackTrace),
+                                    new ColumnObject(EventSourceSchema.CallingTypeJson, DbType.String, callingTypeJson),
+                                };
+
+            var sql = SqlCommon.BuildInsertStatement(EventSchema.TableName, columnSet);
+
+
+            var parameters = SqlCommon.BuildParameters(columnSet);
+
+            var command = DatabaseHelper.BuildCommand(
+                connection,
+                sql,
+                parameters,
+                transaction: transaction,
+                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+
+            return command;
+        }
+
+        private IDbCommand BuildEventCommand(IDbConnection connection, IDbTransaction transaction, Guid eventId, Guid eventSourceId, string name, DateTime sampledUtc)
         {
             var columnSet = new[]
                                 {
                                     new ColumnObject(EventSchema.Id, DbType.Guid, eventId),
+                                    new ColumnObject(EventSchema.EventSourceId, DbType.Guid, eventSourceId),
                                     new ColumnObject(EventSchema.Name, DbType.String, name),
                                     new ColumnObject(EventSchema.SampledUtc, DbType.DateTime, sampledUtc),
                                 };

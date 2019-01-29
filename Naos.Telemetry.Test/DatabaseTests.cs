@@ -123,7 +123,7 @@ namespace Naos.Telemetry.Test
                 .DeserializePayloadUsingSpecificFactory(JsonSerializerFactory.Instance, CompressorFactory.Instance);
 
             await writer.WriteDiagnosticsTelemetryAsync(new[] { readDiagnostics });
-            await writer.WriteEventTelemetryAsync(new[] { readEvent });
+            await writer.WriteEventTelemetryAsync(new[] { new Tuple<EventTelemetrySource, EventTelemetry>(new EventTelemetrySource("Machine"),  readEvent) });
 
             await writer.RemoveItemsFromQueueAsync(new[] { rawDiagnostics.Id, rawEvent.Id });
         }

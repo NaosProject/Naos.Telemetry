@@ -71,11 +71,11 @@ namespace Naos.Telemetry.Writer
         }
 
         /// <inheritdoc />
-        public async Task WriteEventTelemetryAsync(IReadOnlyCollection<EventTelemetry> eventTelemetryRecords)
+        public async Task WriteEventTelemetryAsync(IReadOnlyCollection<Tuple<EventTelemetrySource, EventTelemetry>> eventTelemetryRecords)
         {
-            foreach (var eventItem in eventTelemetryRecords)
+            foreach (var item in eventTelemetryRecords)
             {
-                var writeEventCommand = new WriteEventCommand(eventItem);
+                var writeEventCommand = new WriteEventCommand(item.Item1, item.Item2);
                 await this.writeEventCommandHandler.HandleAsync(writeEventCommand);
             }
         }
