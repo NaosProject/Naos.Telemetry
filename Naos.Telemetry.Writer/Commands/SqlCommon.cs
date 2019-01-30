@@ -75,6 +75,44 @@ namespace Naos.Telemetry.Writer
         }
 
         /// <summary>
+        /// Builds an execute stored procedure SQL statement.
+        /// </summary>
+        /// <param name="procedureName">Procedure name.</param>
+        /// <param name="parameters">Parameters of procedure.</param>
+        /// <returns>Parameterized execute stored procedure SQL statement.</returns>
+        public static string BuildProcedureStatement(string procedureName, IReadOnlyCollection<ColumnObject> parameters)
+        {
+            if (string.IsNullOrWhiteSpace(procedureName))
+            {
+                throw new ArgumentNullException(nameof(procedureName));
+            }
+
+            if (parameters == null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
+            var builder = new StringBuilder();
+            builder.Append("EXEC ");
+            builder.Append(procedureName);
+            builder.Append(" ");
+
+            var idx = 0;
+            foreach (var parameter in parameters)
+            {
+                builder.Append(Invariant($"@{parameter.Name}"));
+
+                if (idx != parameters.Count - 1)
+                {
+                    builder.Append(",");
+                    idx++;
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        /// <summary>
         /// Builds parameters to use with an insert statement.
         /// </summary>
         /// <param name="columns">Columns descriptions.</param>

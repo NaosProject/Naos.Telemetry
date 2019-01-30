@@ -155,10 +155,8 @@ namespace Naos.Telemetry.Writer
             string stackTrace,
             string callingTypeJson)
         {
-            var eventSourceId = Guid.NewGuid();
             var columnSet = new[]
                                 {
-                                    new ColumnObject(EventSourceSchema.Id, DbType.Guid, eventSourceId),
                                     new ColumnObject(EventSourceSchema.MachineName, DbType.String, machineName),
                                     new ColumnObject(EventSourceSchema.ProcessName, DbType.String, processName),
                                     new ColumnObject(EventSourceSchema.ProcessFileVersion, DbType.String, processFileVersion),
@@ -167,8 +165,7 @@ namespace Naos.Telemetry.Writer
                                     new ColumnObject(EventSourceSchema.CallingTypeJson, DbType.String, callingTypeJson),
                                 };
 
-            var sql = SqlCommon.BuildInsertStatement(EventSchema.TableName, columnSet);
-
+            var sql = SqlCommon.BuildProcedureStatement(EventSourceSchema.Sprocs.InsertEventTelemetrySourceAsNecessary.Name, columnSet);
 
             var parameters = SqlCommon.BuildParameters(columnSet);
 

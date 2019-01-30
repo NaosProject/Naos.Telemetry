@@ -47,6 +47,47 @@ namespace Naos.Telemetry.StorageModel
         public const string CallingTypeJson = "CallingTypeJson";
 
         public const string RowCreatedUtc = "RowCreatedUtc";
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sprocs", Justification = "Spelling/name is correct.")]
+        public static class Sprocs
+        {
+            public class InsertEventTelemetrySourceAsNecessary
+            {
+                public const string Name = "InsertEventTelemetrySourceAsNecessary";
+
+                public const string Script = @"
+                            CREATE PROCEDURE InsertEventTelemetrySourceAsNecessary 
+                            (
+	                            @MachineName nvarchar(2048),
+	                            @ProcessName nvarchar(2048),
+	                            @ProcessFileVersion nvarchar(2048),
+	                            @CallingMethod nvarchar(max),
+	                            @StackTrace nvarchar(max),
+	                            @CallingTypeJson nvarchar(max)
+                            )
+                            AS
+                            BEGIN
+                              DECLARE @ret uniqueidentifier
+                              SELECT @ret = Id 
+                              FROM [EventSource]
+                              WHERE MachineName = @MachineName
+                              AND   ProcessName = @ProcessName
+                              AND   ProcessFileVersion = @ProcessFileVersion
+                              AND   CallingMethod = @CallingMethod
+                              AND   Stacktrace = @StackTrace
+                              AND   CallingTypeJson = @CallingTypeJson
+
+                              IF @ret IS NULL
+                              BEGIN
+                                 SELECT @ret = NEWID()
+                                 INSERT INTO EventSource (ID, MachineName, ProcessName, ProcessFileVersion, CallingMethod, StackTrace, CallingTypeJson)
+	                             VALUES (@ret, @MachineName, @ProcessName, @ProcessFileVersion, @CallingMethod, @StackTrace, @CallingTypeJson)
+                              END
+                              SELECT @ret
+                            END
+                            ";
+            }
+        }
     }
 
     public static class PropertySchema

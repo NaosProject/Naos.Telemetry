@@ -63,11 +63,15 @@ namespace Naos.Telemetry.StorageModel
                 .WithColumn(MetricSchema.Name).AsString(1024).NotNullable()
                 .WithColumn(MetricSchema.Value).AsDecimal().Nullable()
                 .WithColumn(MetricSchema.RowCreatedUtc).AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
+
+            this.Execute.Sql(EventSourceSchema.Sprocs.InsertEventTelemetrySourceAsNecessary.Script);
         }
 
         /// <inheritdoc />
         public override void Down()
         {
+            this.Execute.Sql("DROP PROCEDURE " + EventSourceSchema.Sprocs.InsertEventTelemetrySourceAsNecessary.Name);
+
             this.Delete.Table(MetricSchema.TableName);
             this.Delete.Table(PropertySchema.TableName);
             this.Delete.Table(EventSchema.TableName);
