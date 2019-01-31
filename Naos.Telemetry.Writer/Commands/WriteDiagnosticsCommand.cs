@@ -115,7 +115,7 @@ namespace Naos.Telemetry.Writer
                 }
                 catch (Exception commitException)
                 {
-                    if (transaction != null)
+                    if (transaction != null && transaction.Connection != null)
                     {
                         try
                         {

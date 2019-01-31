@@ -51,7 +51,7 @@ namespace Naos.Telemetry.StorageModel
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sprocs", Justification = "Spelling/name is correct.")]
         public static class Sprocs
         {
-            public class InsertEventTelemetrySourceAsNecessary
+            public static class InsertEventTelemetrySourceAsNecessary
             {
                 public const string Name = "InsertEventTelemetrySourceAsNecessary";
 
@@ -67,15 +67,40 @@ namespace Naos.Telemetry.StorageModel
                             )
                             AS
                             BEGIN
+                              IF @MachineName = 'null' OR @MachineName IS NULL
+                              BEGIN
+                                 SET @MachineName = 'Unknown'
+                              END
+                              IF @ProcessName = 'null'
+                              BEGIN
+                                 SET @ProcessName = NULL
+                              END
+                              IF @ProcessFileVersion = 'null'
+                              BEGIN
+                                 SET @ProcessFileVersion = NULL
+                              END
+                              IF @CallingMethod = 'null'
+                              BEGIN
+                                 SET @CallingMethod = NULL
+                              END
+                              IF @Stacktrace = 'null'
+                              BEGIN
+                                 SET @Stacktrace = NULL
+                              END
+                              IF @CallingTypeJson = 'null'
+                              BEGIN
+                                 SET @CallingTypeJson = NULL
+                              END
+
                               DECLARE @ret uniqueidentifier
                               SELECT @ret = Id 
                               FROM [EventSource]
                               WHERE MachineName = @MachineName
-                              AND   ProcessName = @ProcessName
-                              AND   ProcessFileVersion = @ProcessFileVersion
-                              AND   CallingMethod = @CallingMethod
-                              AND   Stacktrace = @StackTrace
-                              AND   CallingTypeJson = @CallingTypeJson
+                              AND   ISNULL(ProcessName, 'null') = ISNULL(@ProcessName, 'null')
+                              AND   ISNULL(ProcessFileVersion, 'null') = ISNULL(@ProcessFileVersion, 'null')
+                              AND   ISNULL(CallingMethod , 'null')= ISNULL(@CallingMethod, 'null')
+                              AND   ISNULL(Stacktrace, 'null') = ISNULL(@StackTrace, 'null')
+                              AND   ISNULL(CallingTypeJson, 'null') = ISNULL(@CallingTypeJson, 'null')
 
                               IF @ret IS NULL
                               BEGIN
