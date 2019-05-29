@@ -1,13 +1,13 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="EventTelemetrySource.cs" company="Naos">
-//    Copyright (c) Naos 2017. All Rights Reserved.
+// <copyright file="EventTelemetrySource.cs" company="Naos Project">
+//    Copyright (c) Naos Project 2019. All rights reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace Naos.Telemetry.Domain
 {
     using System;
-    using OBeautifulCode.TypeRepresentation;
+    using OBeautifulCode.Type;
 
     /// <summary>
     /// Stores some context of the source of a <see cref="EventTelemetry" />

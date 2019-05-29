@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="DatabaseTests.cs" company="Naos">
-//    Copyright (c) Naos 2017. All Rights Reserved.
+// <copyright file="DatabaseTests.cs" company="Naos Project">
+//    Copyright (c) Naos Project 2019. All rights reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -13,22 +13,19 @@ namespace Naos.Telemetry.Test
 
     using FluentAssertions;
 
-    using Microsoft.VisualBasic.Logging;
-
     using Naos.Compression.Domain;
-    using Naos.Database.Migrator;
     using Naos.Diagnostics.Domain;
     using Naos.Diagnostics.Recipes;
     using Naos.Serialization.Domain;
-    using Naos.Serialization.Domain.Extensions;
     using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.Reader;
+    using Naos.Telemetry.Serialization.Json;
     using Naos.Telemetry.StorageModel;
     using Naos.Telemetry.Writer;
 
     using OBeautifulCode.Reflection.Recipes;
-
+    using OBeautifulCode.Type;
     using Spritely.Cqrs;
 
     using Xunit;
@@ -36,32 +33,10 @@ namespace Naos.Telemetry.Test
     public static class DatabaseTests
     {
         [Fact(Skip = "For local testing")]
-        public static void Create_schema_on_localhost()
-        {
-            // Arrange
-            var database =
-                new TelemetryDatabase { ConnectionSettings = new DatabaseConnectionSettings { Server = "localhost", Database = "Telemetry" } };
-            var connectionString = database.ConnectionSettings.ToInsecureConnectionString();
-            var announcements = new List<string>();
-
-            // Act
-            MigrationExecutor.Up(
-                typeof(MigrationVersion).Assembly,
-                connectionString,
-                database.ConnectionSettings.Database,
-                MigrationVersion.CreateEventSchema,
-                msg => announcements.Add(msg),
-                TimeSpan.FromSeconds(database.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 30));
-
-            // Assert
-            announcements.Should().NotBeEmpty();
-        }
-
-        [Fact(Skip = "For local testing")]
         public static async Task Write_and_process_items()
         {
             // Arrange
-            var serializationDescription = new SerializationDescription(SerializationFormat.Json, SerializationRepresentation.String);
+            var serializationDescription = new SerializationDescription(SerializationKind.Json, SerializationFormat.String, typeof(TelemetryJsonConfiguration).ToTypeDescription());
             var database =
                 new TelemetryDatabase { ConnectionSettings = new DatabaseConnectionSettings { Server = "localhost", Database = "Telemetry" } };
             var writer = TelemetryWriterBuilder.Build(database);

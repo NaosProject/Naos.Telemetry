@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="EventTelemetry.cs" company="Naos">
-//    Copyright (c) Naos 2017. All Rights Reserved.
+// <copyright file="EventTelemetry.cs" company="Naos Project">
+//    Copyright (c) Naos Project 2019. All rights reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -8,16 +8,19 @@ namespace Naos.Telemetry.Domain
 {
     using System;
     using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Linq;
+    using OBeautifulCode.Collection.Recipes;
+    using OBeautifulCode.Math.Recipes;
 
     /// <summary>
     /// Model to represent an event.
     /// </summary>
-    public class EventTelemetry : IAmTelemetryItem
+    public class EventTelemetry : IAmTelemetryItem, IEquatable<EventTelemetry>
     {
-        private readonly Dictionary<string, string> propertyNameToValueMap;
+        private Dictionary<string, string> propertyNameToValueMap;
 
-        private readonly Dictionary<string, decimal?> metricNameToValueMap;
+        private Dictionary<string, decimal?> metricNameToValueMap;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventTelemetry"/> class.
@@ -26,7 +29,11 @@ namespace Naos.Telemetry.Domain
         /// <param name="name">Name of the event.</param>
         /// <param name="propertyNameToValueMap">Optional properties associated with the event.</param>
         /// <param name="metricNameToValueMap">Optional metrics associated with the event.</param>
-        public EventTelemetry(DateTime sampledUtc, string name, IReadOnlyDictionary<string, string> propertyNameToValueMap = null, IReadOnlyDictionary<string, decimal?> metricNameToValueMap = null)
+        public EventTelemetry(
+            DateTime sampledUtc,
+            string name,
+            IReadOnlyDictionary<string, string> propertyNameToValueMap = null,
+            IReadOnlyDictionary<string, decimal?> metricNameToValueMap = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -35,8 +42,8 @@ namespace Naos.Telemetry.Domain
 
             this.SampledUtc = sampledUtc;
             this.Name = name;
-            this.propertyNameToValueMap = propertyNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, string>();
-            this.metricNameToValueMap = metricNameToValueMap?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, decimal?>();
+            this.PropertyNameToValueMap = propertyNameToValueMap;
+            this.MetricNameToValueMap = metricNameToValueMap;
         }
 
         /// <inheritdoc />
@@ -48,9 +55,22 @@ namespace Naos.Telemetry.Domain
         public string Name { get; private set; }
 
         /// <summary>
+        /// Gets an properties of the event.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> PropertyNameToValueMap
+        {
+            get { return this.propertyNameToValueMap; }
+            private set { this.propertyNameToValueMap = value?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, string>(); }
+        }
+
+        /// <summary>
         /// Gets any metrics associated with the event.
         /// </summary>
-        public IReadOnlyDictionary<string, decimal?> MetricNameToValueMap => this.metricNameToValueMap;
+        public IReadOnlyDictionary<string, decimal?> MetricNameToValueMap
+        {
+            get { return this.metricNameToValueMap; }
+            private set { this.metricNameToValueMap = value?.ToDictionary(k => k.Key, v => v.Value) ?? new Dictionary<string, decimal?>(); }
+        }
 
         /// <summary>
         /// Add a metric to collection.
@@ -63,11 +83,6 @@ namespace Naos.Telemetry.Domain
         }
 
         /// <summary>
-        /// Gets an properties of the event.
-        /// </summary>
-        public IReadOnlyDictionary<string, string> PropertyNameToValueMap => this.propertyNameToValueMap;
-
-        /// <summary>
         /// Add a property to collection.
         /// </summary>
         /// <param name="name">Name of the property.</param>
@@ -76,6 +91,54 @@ namespace Naos.Telemetry.Domain
         {
             this.propertyNameToValueMap.Add(name, value);
         }
+
+        /// <summary>
+        /// Equality operator.
+        /// </summary>
+        /// <param name="first">First parameter.</param>
+        /// <param name="second">Second parameter.</param>
+        /// <returns>A value indicating whether or not the two items are equal.</returns>
+        public static bool operator ==(EventTelemetry first, EventTelemetry second)
+        {
+            if (ReferenceEquals(first, second))
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(first, null) || ReferenceEquals(second, null))
+            {
+                return false;
+            }
+
+            var result = first.SampledUtc == second.SampledUtc &&
+                         string.Equals(first.Name, second.Name, StringComparison.OrdinalIgnoreCase) &&
+                         first.MetricNameToValueMap.DictionaryEqualHandlingNulls(second.MetricNameToValueMap) &&
+                         first.PropertyNameToValueMap.DictionaryEqualHandlingNulls(second.PropertyNameToValueMap);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Inequality operator.
+        /// </summary>
+        /// <param name="first">First parameter.</param>
+        /// <param name="second">Second parameter.</param>
+        /// <returns>A value indicating whether or not the two items are inequal.</returns>
+        public static bool operator !=(EventTelemetry first, EventTelemetry second) => !(first == second);
+
+        /// <inheritdoc />
+        public bool Equals(EventTelemetry other) => this == other;
+
+        /// <inheritdoc />
+        public override bool Equals(object obj) => this == (obj as EventTelemetry);
+
+        /// <inheritdoc />
+        public override int GetHashCode() => HashCodeHelper.Initialize()
+            .Hash(this.SampledUtc)
+            .Hash(this.Name)
+            .HashDictionary(this.MetricNameToValueMap)
+            .HashDictionary(this.PropertyNameToValueMap)
+            .Value;
     }
 
     /// <summary>

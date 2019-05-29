@@ -207,11 +207,12 @@ namespace OBeautifulCode.Reflection.Recipes
         public static IReadOnlyCollection<Type> GetTypesFromAssemblies(
             this IReadOnlyCollection<Assembly> assemblies)
         {
-            new { assemblies }.Must().NotBeNull().And().NotContainAnyNulls();
+            new { assemblies }.Must().NotBeNull().And().NotContainAnyNullElements();
 
             try
             {
-                var result = assemblies.SelectMany(_ => _.GetTypes()).ToList();
+                var result = assemblies.SelectMany(_ => _.GetTypes()).Where(_ => _ != null).ToList();
+
                 return result;
             }
             catch (ReflectionTypeLoadException reflectionTypeLoadException)

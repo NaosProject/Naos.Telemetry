@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="SqlCommon.cs" company="Naos">
-//    Copyright (c) Naos 2017. All Rights Reserved.
+// <copyright file="SqlCommon.cs" company="Naos Project">
+//    Copyright (c) Naos Project 2019. All rights reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -150,9 +150,9 @@ namespace Naos.Telemetry.Writer
         /// Initializes a new instance of the <see cref="ColumnObject"/> class.
         /// </summary>
         /// <param name="name">Name of column.</param>
-        /// <param name="dbType">Type of column.</param>
+        /// <param name="databaseType">Type of column.</param>
         /// <param name="value">Value for column.</param>
-        public ColumnObject(string name, DbType dbType, object value)
+        public ColumnObject(string name, DbType databaseType, object value)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -160,7 +160,7 @@ namespace Naos.Telemetry.Writer
             }
 
             this.Name = name;
-            this.DbType = dbType;
+            this.DbType = databaseType;
             this.Value = value;
         }
 

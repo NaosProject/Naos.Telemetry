@@ -1,6 +1,6 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IReadTelemetry.cs" company="Naos">
-//    Copyright (c) Naos 2017. All Rights Reserved.
+// <copyright file="IReadTelemetry.cs" company="Naos Project">
+//    Copyright (c) Naos Project 2019. All rights reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -19,6 +19,7 @@ namespace Naos.Telemetry.Domain
         /// Get items in queue waiting to be processed.
         /// </summary>
         /// <returns>Collection of queued items.</returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1024:UsePropertiesWhereAppropriate", Justification = "Don't want a property for an active operation against a data source.")]
         Task<IReadOnlyCollection<RawQueueItem>> GetQueuedRawItemsAsync();
     }
 }
