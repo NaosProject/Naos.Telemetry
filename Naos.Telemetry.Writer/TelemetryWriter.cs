@@ -100,7 +100,7 @@ namespace Naos.Telemetry.Writer
         /// Builds a new instance of the <see cref="TelemetryWriter"/> class.
         /// </summary>
         /// <param name="telemetryDatabase">Telemetry database.</param>
-        /// <returns>New instance of <see cref="TelemetryWriter"/></returns>
+        /// <returns>New instance of <see cref="TelemetryWriter"/>.</returns>
         public static TelemetryWriter Build(TelemetryDatabase telemetryDatabase)
         {
             if (telemetryDatabase == null)
@@ -120,7 +120,7 @@ namespace Naos.Telemetry.Writer
         /// Builds a new instance of the <see cref="TelemetryWriter"/> class.
         /// </summary>
         /// <param name="databaseFetcher">Lambda to get database settings.</param>
-        /// <returns>New instance of <see cref="TelemetryWriter"/></returns>
+        /// <returns>New instance of <see cref="TelemetryWriter"/>.</returns>
         public static TelemetryWriter Build(Func<Type, object> databaseFetcher)
         {
             if (databaseFetcher == null)

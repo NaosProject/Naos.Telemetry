@@ -112,8 +112,8 @@ namespace Naos.Telemetry.Domain
 
             var result = first.SampledUtc == second.SampledUtc &&
                          string.Equals(first.Name, second.Name, StringComparison.OrdinalIgnoreCase) &&
-                         first.MetricNameToValueMap.DictionaryEqualHandlingNulls(second.MetricNameToValueMap) &&
-                         first.PropertyNameToValueMap.DictionaryEqualHandlingNulls(second.PropertyNameToValueMap);
+                         first.MetricNameToValueMap.DictionaryEqual(second.MetricNameToValueMap) &&
+                         first.PropertyNameToValueMap.DictionaryEqual(second.PropertyNameToValueMap);
 
             return result;
         }
