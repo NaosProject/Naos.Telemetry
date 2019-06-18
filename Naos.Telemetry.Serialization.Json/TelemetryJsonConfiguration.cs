@@ -29,6 +29,7 @@ namespace Naos.Telemetry.Serialization.Json
         {
             typeof(DiagnosticsTelemetry),
             typeof(EventTelemetry),
+            typeof(StopwatchSnapshot),
         };
     }
 }

@@ -29,6 +29,7 @@ namespace Naos.Telemetry.Serialization.Bson
         {
             typeof(DiagnosticsTelemetry),
             typeof(EventTelemetry),
+            typeof(StopwatchSnapshot),
         };
     }
 }

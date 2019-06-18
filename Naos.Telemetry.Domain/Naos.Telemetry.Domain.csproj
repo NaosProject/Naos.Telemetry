@@ -76,6 +76,8 @@
     <Compile Include="EventTelemetry.cs" />
     <Compile Include="IAmTelemetryItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Stopwatches.cs" />
+    <Compile Include="StopwatchSnapshot.cs" />
   </ItemGroup>
   <ItemGroup>
     <AdditionalFiles Include=".analyzers\stylecop.json" />

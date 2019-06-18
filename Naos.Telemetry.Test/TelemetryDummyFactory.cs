@@ -49,6 +49,14 @@ namespace Naos.Telemetry.Recipes
 
                     return result;
                 });
+
+            AutoFixtureBackedDummyFactory.AddDummyCreator(
+                () =>
+                {
+                    var result = new StopwatchSnapshot(A.Dummy<string>(), A.Dummy<long>(), A.Dummy<bool>());
+
+                    return result;
+                });
         }
 
         /// <inheritdoc />

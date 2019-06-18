@@ -57,5 +57,25 @@ namespace Naos.Telemetry.Test
             actualBson.Should().Be(expected);
             actualJson.Should().Be(expected);
         }
+
+        [Fact]
+        public static void StopwatchSnapshot_Roundtrips()
+        {
+            // Arrange
+            var expected = A.Dummy<StopwatchSnapshot>();
+            var bsonSerializer = new NaosBsonSerializer(typeof(TelemetryBsonConfiguration));
+            var jsonSerializer = new NaosJsonSerializer(typeof(TelemetryJsonConfiguration));
+
+            // Act
+            var actualBsonString = bsonSerializer.SerializeToString(expected);
+            var actualBson = bsonSerializer.Deserialize<StopwatchSnapshot>(actualBsonString);
+
+            var actualJsonString = jsonSerializer.SerializeToString(expected);
+            var actualJson = jsonSerializer.Deserialize<StopwatchSnapshot>(actualJsonString);
+
+            // Assert
+            actualBson.Should().Be(expected);
+            actualJson.Should().Be(expected);
+        }
     }
 }

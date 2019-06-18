@@ -142,6 +142,8 @@
     <Compile Include=".recipes\OBeautifulCode.Validation\ValidatedNotNullAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DatabaseTests.cs" />
+    <Compile Include="StopwatchSnapshotTests.cs" />
+    <Compile Include="StopwatchesTests.cs" />
     <Compile Include="SerializationTests.cs" />
     <Compile Include="TelemetryDummyFactory.cs" />
   </ItemGroup>
