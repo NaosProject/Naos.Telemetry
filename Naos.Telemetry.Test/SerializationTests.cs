@@ -8,17 +8,17 @@ namespace Naos.Telemetry.Test
 {
     using FakeItEasy;
     using FluentAssertions;
-    using Naos.Serialization.Bson;
-    using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.Serialization.Bson;
     using Naos.Telemetry.Serialization.Json;
+    using OBeautifulCode.Serialization.Bson;
+    using OBeautifulCode.Serialization.Json;
     using Xunit;
 
     public static class SerializationTests
     {
-        private static readonly NaosBsonSerializer BsonSerializer = new NaosBsonSerializer(typeof(TelemetryBsonConfiguration));
-        private static readonly NaosJsonSerializer JsonSerializer = new NaosJsonSerializer(typeof(TelemetryJsonConfiguration));
+        private static readonly ObcBsonSerializer BsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonConfiguration));
+        private static readonly ObcJsonSerializer JsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonConfiguration));
 
         [Fact]
         public static void EventTelemetry_Roundtrips()
@@ -43,8 +43,8 @@ namespace Naos.Telemetry.Test
         {
             // Arrange
             var expected = A.Dummy<DiagnosticsTelemetry>();
-            var bsonSerializer = new NaosBsonSerializer(typeof(TelemetryBsonConfiguration));
-            var jsonSerializer = new NaosJsonSerializer(typeof(TelemetryJsonConfiguration));
+            var bsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonConfiguration));
+            var jsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonConfiguration));
 
             // Act
             var actualBsonString = bsonSerializer.SerializeToString(expected);
@@ -63,8 +63,8 @@ namespace Naos.Telemetry.Test
         {
             // Arrange
             var expected = A.Dummy<StopwatchSnapshot>();
-            var bsonSerializer = new NaosBsonSerializer(typeof(TelemetryBsonConfiguration));
-            var jsonSerializer = new NaosJsonSerializer(typeof(TelemetryJsonConfiguration));
+            var bsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonConfiguration));
+            var jsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonConfiguration));
 
             // Act
             var actualBsonString = bsonSerializer.SerializeToString(expected);

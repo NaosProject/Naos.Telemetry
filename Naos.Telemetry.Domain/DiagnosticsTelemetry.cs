@@ -13,7 +13,7 @@ namespace Naos.Telemetry.Domain
 
     using Naos.Diagnostics.Domain;
     using OBeautifulCode.Collection.Recipes;
-    using OBeautifulCode.Math.Recipes;
+    using OBeautifulCode.Equality.Recipes;
 
     /// <summary>
     /// Diagnostics data.
@@ -104,7 +104,7 @@ namespace Naos.Telemetry.Domain
             return first.SampledUtc == second.SampledUtc &&
                    first.MachineDetails == second.MachineDetails &&
                    first.ProcessDetails == second.ProcessDetails &&
-                   first.ProcessSiblingAssemblies.SequenceEqualHandlingNulls(second.ProcessSiblingAssemblies);
+                   first.ProcessSiblingAssemblies.IsEqualTo(second.ProcessSiblingAssemblies);
         }
 
         /// <summary>
@@ -126,7 +126,7 @@ namespace Naos.Telemetry.Domain
             .Hash(this.SampledUtc)
             .Hash(this.MachineDetails)
             .Hash(this.ProcessDetails)
-            .HashElements(this.ProcessSiblingAssemblies)
+            .Hash(this.ProcessSiblingAssemblies)
             .Value;
     }
 }

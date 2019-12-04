@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27004.2009
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29025.244
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Domain", "Naos.Telemetry.Domain\Naos.Telemetry.Domain.csproj", "{40CAE442-EF5F-46DA-A8BF-FBB1371DFB7F}"
 EndProject
@@ -13,8 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Test", "Naos
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F1BAABBE-9307-41B3-8F94-7EDF786474F7}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		LICENSE = LICENSE
 		README.md = README.md
+		RepoConfig.state = RepoConfig.state
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Naos.Telemetry.Reader", "Naos.Telemetry.Reader\Naos.Telemetry.Reader.csproj", "{9F985E43-4AE4-4941-85C6-45501E3B5C64}"

@@ -9,8 +9,8 @@ namespace Naos.Telemetry.Serialization.Json
     using System;
     using System.Collections.Generic;
     using Naos.Diagnostics.Serialization.Json;
-    using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
+    using OBeautifulCode.Serialization.Json;
 
     /// <summary>
     /// Implementation for the <see cref="Telemetry" /> domain.

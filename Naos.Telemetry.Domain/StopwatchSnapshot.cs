@@ -10,7 +10,7 @@ namespace Naos.Telemetry.Domain
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
-    using OBeautifulCode.Math.Recipes;
+    using OBeautifulCode.Equality.Recipes;
 
     /// <summary>
     /// Model object that contains a summary of the <see cref="Stopwatch" />.

@@ -9,12 +9,10 @@ namespace Naos.Telemetry.Writer
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-
-    using Naos.Serialization.Domain;
-    using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.StorageModel;
-
+    using OBeautifulCode.Serialization;
+    using OBeautifulCode.Serialization.Json;
     using static System.FormattableString;
 
     /// <summary>
@@ -26,7 +24,7 @@ namespace Naos.Telemetry.Writer
         /// Serializer for the fields that are stored as JSON.
         /// </summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes", Justification = "Is immutable and I want a field.")]
-        public static readonly IStringSerializeAndDeserialize JsonSerializer = new NaosJsonSerializer();
+        public static readonly IStringSerializeAndDeserialize JsonSerializer = new ObcJsonSerializer();
 
         private readonly EnqueueItemsCommandHandler enqueueItemsCommandHandler;
         private readonly RemoveEnqueuedItemsCommandHandler removeEnqueuedItemsCommandHandler;

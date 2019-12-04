@@ -12,11 +12,11 @@ namespace Naos.Telemetry.Test
     using System.Threading;
     using FakeItEasy;
     using FluentAssertions;
-    using Naos.Serialization.Bson;
-    using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.Serialization.Bson;
     using Naos.Telemetry.Serialization.Json;
+    using OBeautifulCode.Serialization.Bson;
+    using OBeautifulCode.Serialization.Json;
     using Xunit;
 
     public static class StopwatchesTests

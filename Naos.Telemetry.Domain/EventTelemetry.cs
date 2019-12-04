@@ -11,7 +11,7 @@ namespace Naos.Telemetry.Domain
     using System.Collections.ObjectModel;
     using System.Linq;
     using OBeautifulCode.Collection.Recipes;
-    using OBeautifulCode.Math.Recipes;
+    using OBeautifulCode.Equality.Recipes;
 
     /// <summary>
     /// Model to represent an event.
@@ -112,8 +112,8 @@ namespace Naos.Telemetry.Domain
 
             var result = first.SampledUtc == second.SampledUtc &&
                          string.Equals(first.Name, second.Name, StringComparison.OrdinalIgnoreCase) &&
-                         first.MetricNameToValueMap.DictionaryEqual(second.MetricNameToValueMap) &&
-                         first.PropertyNameToValueMap.DictionaryEqual(second.PropertyNameToValueMap);
+                         first.MetricNameToValueMap.IsEqualTo(second.MetricNameToValueMap) &&
+                         first.PropertyNameToValueMap.IsEqualTo(second.PropertyNameToValueMap);
 
             return result;
         }
@@ -136,8 +136,8 @@ namespace Naos.Telemetry.Domain
         public override int GetHashCode() => HashCodeHelper.Initialize()
             .Hash(this.SampledUtc)
             .Hash(this.Name)
-            .HashDictionary(this.MetricNameToValueMap)
-            .HashDictionary(this.PropertyNameToValueMap)
+            .Hash(this.MetricNameToValueMap)
+            .Hash(this.PropertyNameToValueMap)
             .Value;
     }
 

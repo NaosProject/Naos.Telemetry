@@ -7,6 +7,7 @@
 namespace Naos.Telemetry.Domain
 {
     using System;
+    using OBeautifulCode.Representation.System;
     using OBeautifulCode.Type;
 
     /// <summary>
@@ -29,7 +30,7 @@ namespace Naos.Telemetry.Domain
             string processName = null,
             string processFileVersion = null,
             string callingMethod = null,
-            TypeDescription callingType = null,
+            TypeRepresentation callingType = null,
             string stackTrace = null)
         {
             this.MachineName = machineName ?? throw new ArgumentNullException(nameof(machineName));
@@ -63,7 +64,7 @@ namespace Naos.Telemetry.Domain
         /// <summary>
         /// Gets a description of the calling type.
         /// </summary>
-        public TypeDescription CallingType { get; private set; }
+        public TypeRepresentation CallingType { get; private set; }
 
         /// <summary>
         /// Gets the stack trace.

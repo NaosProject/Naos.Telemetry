@@ -10,24 +10,22 @@ namespace Naos.Telemetry.Test
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-
     using FluentAssertions;
-
-    using Naos.Compression.Domain;
     using Naos.Diagnostics.Domain;
     using Naos.Diagnostics.Recipes;
-    using Naos.Serialization.Domain;
-    using Naos.Serialization.Json;
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.Reader;
     using Naos.Telemetry.Serialization.Json;
     using Naos.Telemetry.StorageModel;
     using Naos.Telemetry.Writer;
-
+    using OBeautifulCode.Compression;
+    using OBeautifulCode.Compression.Recipes;
     using OBeautifulCode.Reflection.Recipes;
+    using OBeautifulCode.Representation.System;
+    using OBeautifulCode.Serialization;
+    using OBeautifulCode.Serialization.Json;
     using OBeautifulCode.Type;
     using Spritely.Cqrs;
-
     using Xunit;
 
     public static class DatabaseTests
@@ -36,7 +34,7 @@ namespace Naos.Telemetry.Test
         public static async Task Write_and_process_items()
         {
             // Arrange
-            var serializationDescription = new SerializationDescription(SerializationKind.Json, SerializationFormat.String, typeof(TelemetryJsonConfiguration).ToTypeDescription());
+            var serializationDescription = new SerializationDescription(SerializationKind.Json, SerializationFormat.String, typeof(TelemetryJsonConfiguration).ToRepresentation());
             var database =
                 new TelemetryDatabase { ConnectionSettings = new DatabaseConnectionSettings { Server = "localhost", Database = "Telemetry" } };
             var writer = TelemetryWriterBuilder.Build(database);
