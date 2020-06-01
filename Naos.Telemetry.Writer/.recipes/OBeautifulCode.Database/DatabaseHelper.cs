@@ -11,16 +11,17 @@ namespace OBeautifulCode.Database.Recipes
 {
     using System;
     using System.Collections.Generic;
-    using System.Collections.ObjectModel;
     using System.Data;
     using System.Data.SqlClient;
+    using System.Diagnostics.CodeAnalysis;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Security;
+    using System.Threading.Tasks;
 
     using OBeautifulCode.Assertion.Recipes;
     using OBeautifulCode.Collection.Recipes;
+    using OBeautifulCode.Database.Recipes.Internal;
     using OBeautifulCode.String.Recipes;
 
     using static System.FormattableString;
@@ -38,586 +39,1233 @@ namespace OBeautifulCode.Database.Recipes
     static class DatabaseHelper
     {
         /// <summary>
-        /// Opens an database connection using a Connection String.
+        /// Opens a SQL Server database connection using a connection string.
         /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
         /// <param name="connectionString">String used to open a connection to the database.</param>
-        /// <returns>Returns an open connection of the specified <see cref="IDbConnection"/> type.</returns>
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        public static T OpenConnection<T>(
-            string connectionString)
-            where T : class, IDbConnection, new()
+        /// <returns>
+        /// An open SQL Server connection.
+        /// </returns>
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = ObcSuppressBecause.CA2000_DisposeObjectsBeforeLosingScope_DisposableObjectIsMethodReturnObject)]
+        public static SqlConnection OpenSqlConnection(
+            this string connectionString)
         {
             new { connectionString }.AsArg().Must().NotBeNullNorWhiteSpace();
 
-            T connection = null;
+            SqlConnection result = null;
+
             try
             {
                 // an invalid connectionString will throw ArgumentException.
-                connection = new T { ConnectionString = connectionString };
+                result = new SqlConnection { ConnectionString = connectionString };
 
                 // InvalidOperationException won't be thrown, even if data source or server aren't specified
                 // in the connection string.  as long as the connection string is valid,
                 // the only possible exception is SqlException
-                connection.Open();
+                result.Open();
             }
             catch (Exception)
             {
-                connection?.Dispose();
+                result?.Dispose();
+
                 throw;
             }
 
-            return connection;
+            return result;
         }
 
         /// <summary>
-        /// Builds an <see cref="IDbCommand"/> using an existing database connection.
+        /// Opens a SQL Server database connection using a connection string.
         /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <returns>
+        /// An open SQL Server connection.
+        /// </returns>
+        public static async Task<SqlConnection> OpenSqlConnectionAsync(
+            this string connectionString)
+        {
+            new { connectionString }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            SqlConnection result = null;
+
+            try
+            {
+                // an invalid connectionString will throw ArgumentException.
+                result = new SqlConnection { ConnectionString = connectionString };
+
+                // InvalidOperationException won't be thrown, even if data source or server aren't specified
+                // in the connection string.  as long as the connection string is valid,
+                // the only possible exception is SqlException
+                await result.OpenAsync();
+            }
+            catch (Exception)
+            {
+                result?.Dispose();
+
+                throw;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Builds a <see cref="SqlCommand"/> using an existing database connection.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.  Null parameters are ignored.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns the constructed <see cref="IDbCommand"/>.</returns>
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "It's convenient to execute a string command and this method does have a parameter for command parameters.")]
-        public static IDbCommand BuildCommand(
-            IDbConnection connection,
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The constructed <see cref="SqlCommand"/>.
+        /// </returns>
+        [SuppressMessage("Microsoft.Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "It's convenient to execute a string command and this method does have a parameter for command parameters.")]
+        public static SqlCommand BuildSqlCommand(
+            this SqlConnection connection,
             string commandText,
-            IEnumerable<IDataParameter> commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
+            SqlTransaction transaction = null,
+            bool prepareCommand = false)
         {
             // check arguments
             new { connection }.AsArg().Must().NotBeNull();
             new { connection.State }.AsArg().Must().BeEqualTo(ConnectionState.Open, "connection is in an invalid state: " + connection.State + ".  Must be Open.");
             new { commandText }.AsArg().Must().NotBeNullNorWhiteSpace();
-            new { timeoutSeconds }.AsArg().Must().BeGreaterThanOrEqualTo(0);
+            new { commandTimeoutInSeconds }.AsArg().Must().BeGreaterThanOrEqualTo(0);
+            commandParameters = commandParameters ?? new SqlParameter[0];
+            new { commandParameters }.AsArg().Must().NotContainAnyNullElements();
 
             // validate transaction
             if (transaction != null)
             {
                 if (transaction.Connection == null)
                 {
-                    throw new ArgumentException("transaction is invalid.");
+                    throw new ArgumentException(Invariant($"{nameof(transaction)} is invalid; its {nameof(SqlTransaction.Connection)} is null."));
                 }
 
                 if (transaction.Connection != connection)
                 {
-                    throw new ArgumentException("transaction is using a different connection than the specified connection.");
+                    throw new ArgumentException(Invariant($"{nameof(transaction)} is using a different {nameof(SqlTransaction.Connection)} than the specified {nameof(connection)}."));
                 }
             }
 
-            // create the command
-            IDbCommand command = connection.CreateCommand();
+            // create the command.  documentation indicates that this will not throw
+            var result = connection.CreateCommand();
 
             try
             {
                 // populate command properties
-                command.Connection = connection;
-                command.CommandType = commandType;
-                command.CommandText = commandText;
-                command.CommandTimeout = timeoutSeconds;
+                result.Connection = connection;
+                result.CommandType = commandType;
+                result.CommandText = commandText;
+                result.CommandTimeout = commandTimeoutInSeconds;
+
                 if (transaction != null)
                 {
-                    command.Transaction = transaction;
+                    result.Transaction = transaction;
                 }
 
-                // are there any parameters?  add them to command, replacing null with DBNull
-                if (commandParameters != null)
+                foreach (var parameter in commandParameters)
                 {
-                    foreach (IDataParameter parameter in commandParameters)
-                    {
-                        if (parameter == null)
-                        {
-                            continue;
-                        }
-
-                        if (parameter.Value == null)
-                        {
-                            parameter.Value = DBNull.Value;
-                        }
-
-                        try
-                        {
-                            command.Parameters.Add(parameter);
-                        }
-                        catch (InvalidCastException)
-                        {
-                            throw new InvalidOperationException("Attempting to set a parameter of type " + parameter.GetType().Name + " that was designed for a data provider other than the provider represented by the specified connection.");
-                        }
-                    }
+                    result.Parameters.Add(parameter);
                 }
 
                 if (prepareCommand)
                 {
-                    command.Prepare();
+                    result.Prepare();
                 }
 
-                return command;
+                return result;
             }
             catch (Exception)
             {
-                command.Dispose();
+                result.Dispose();
+
                 throw;
             }
         }
 
         /// <summary>
-        /// Executes the CommandText against the Connection and builds an IDataReader.
+        /// Opens a connection to the database, executes the <paramref name="commandText"/>, and builds an <see cref="SqlDataReader"/>.
         /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="commandBehavior">Provides a description of the results of the query and its effect on the database.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns an <see cref="IDataReader"/>.</returns>
-        /// From BuildCommand:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// <exception cref="InvalidOperationException">There is already an open SqlDataReader associated with the connection.</exception>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
         /// <remarks>
         /// If an expected parameter type does not match an actual parameter value's type, ExecuteReader() does not throw <see cref="SqlException"/>.
         /// Instead, a reader with no rows is returned.  Any attempt to Read() will throw an exception.
         /// </remarks>
-        public static IDataReader ExecuteReader(
-            IDbConnection connection,
+        /// <returns>
+        /// A constructed <see cref="SqlDataReader"/>.
+        /// </returns>
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = ObcSuppressBecause.CA2000_DisposeObjectsBeforeLosingScope_MethodCreatesDisposableObjectButItCannotBeDisposedBecauseReturnObjectRequiresDisposableObjectToBeFullyIntact)]
+        public static SqlDataReader ExecuteReader(
+            this string connectionString,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            CommandBehavior commandBehavior = CommandBehavior.Default,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
         {
-            using (IDbCommand command = BuildCommand(connection, commandText, commandParameters, commandType, transaction, prepareCommand, timeoutSeconds))
+            if (!commandBehavior.HasFlag(CommandBehavior.CloseConnection))
             {
-                return command.ExecuteReader(commandBehavior);  // can throw SqlException
+                throw new ArgumentException(Invariant($"{nameof(commandBehavior)} does not set the flag {CommandBehavior.CloseConnection}.  This will result in an open connection with the caller having no means of closing it."));
             }
+
+            var connection = OpenSqlConnection(connectionString);
+
+            var result = connection.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, null, commandBehavior, prepareCommand);
+
+            return result;
         }
 
         /// <summary>
-        /// Opens a connection to the database and executes the CommandText to build an IDataReader.
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and builds an <see cref="SqlDataReader"/>.
         /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
-        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="connection">An open connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="commandBehavior">Provides a description of the results of the query and its effect on the database.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns an <see cref="IDataReader"/>.</returns>
-        /// From OpenConnection:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
         /// <remarks>
         /// If an expected parameter type does not match an actual parameter value's type, ExecuteReader() does not throw <see cref="SqlException"/>.
         /// Instead, a reader with no rows is returned.  Any attempt to Read() will throw an exception.
         /// </remarks>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static IDataReader ExecuteReader<T>(
-            string connectionString,
+        /// <returns>
+        /// A constructed <see cref="SqlDataReader"/>.
+        /// </returns>
+        public static SqlDataReader ExecuteReader(
+            this SqlConnection connection,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
             CommandBehavior commandBehavior = CommandBehavior.Default,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
+            bool prepareCommand = false)
         {
-            var connection = OpenConnection<T>(connectionString);
-            return ExecuteReader(connection, commandText, commandParameters, commandType, null, commandBehavior, prepareCommand, timeoutSeconds);
-        }
-
-        /// <summary>
-        /// Executes a SQL statement against a connection object and returns the number of rows affected.
-        /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
-        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.  Null parameters are ignored.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns the number of rows affected.</returns>
-        /// From BuildCommand:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        public static int ExecuteNonQuery(
-            IDbConnection connection,
-            string commandText,
-            IDataParameter[] commandParameters = null,
-            CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-        {
-            using (IDbCommand command = BuildCommand(connection, commandText, commandParameters, commandType, transaction, prepareCommand, timeoutSeconds))
+            using (var command = connection.BuildSqlCommand(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, prepareCommand))
             {
-                return command.ExecuteNonQuery();  // can throw SqlException
-            }
-        }
+                var result = command.ExecuteReader(commandBehavior);  // can throw SqlException
 
-        /// <summary>
-        /// Opens a connection to the database and executes a SQL statement, returning the number of rows affected.
-        /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
-        /// <param name="connectionString">String used to open a connection to the database.</param>
-        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.  Null parameters are ignored.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns the number of rows affected.</returns>
-        /// From OpenConnection:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteNonQuery:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteNonQuery:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static int ExecuteNonQuery<T>(
-            string connectionString,
-            string commandText,
-            IDataParameter[] commandParameters = null,
-            CommandType commandType = CommandType.Text,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
-        {
-            using (var connection = OpenConnection<T>(connectionString))
-            {
-                int result = ExecuteNonQuery(connection, commandText, commandParameters, commandType, null, prepareCommand, timeoutSeconds);
-                connection.Close();
                 return result;
             }
         }
 
         /// <summary>
-        /// Determines if a command results in one or more rows of data when executed against a connection.
+        /// Opens a connection to the database, executes the <paramref name="commandText"/>, and builds an <see cref="SqlDataReader"/>.
         /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns true if the command results in one or more rows of data.  Returns false if not.</returns>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// <exception cref="InvalidOperationException">There is an open SqlDataReader associated with the connection.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        public static bool CommandHasRows(
-            IDbConnection connection,
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <remarks>
+        /// If an expected parameter type does not match an actual parameter value's type, ExecuteReader() does not throw <see cref="SqlException"/>.
+        /// Instead, a reader with no rows is returned.  Any attempt to Read() will throw an exception.
+        /// </remarks>
+        /// <returns>
+        /// A constructed <see cref="SqlDataReader"/>.
+        /// </returns>
+        public static async Task<SqlDataReader> ExecuteReaderAsync(
+            this string connectionString,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
         {
-            using (IDataReader reader = ExecuteReader(connection, commandText, commandParameters, commandType, transaction, CommandBehavior.Default, prepareCommand, timeoutSeconds))
+            if (!commandBehavior.HasFlag(CommandBehavior.CloseConnection))
             {
-                return DataReaderHasRows(reader);
+                throw new ArgumentException(Invariant($"{nameof(commandBehavior)} does not set the flag {CommandBehavior.CloseConnection}.  This will result in an open connection with the caller having no means of closing it."));
+            }
+
+            var connection = await OpenSqlConnectionAsync(connectionString);
+
+            var result = await connection.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, null, commandBehavior, prepareCommand);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and builds an <see cref="SqlDataReader"/>.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <remarks>
+        /// If an expected parameter type does not match an actual parameter value's type, ExecuteReader() does not throw <see cref="SqlException"/>.
+        /// Instead, a reader with no rows is returned.  Any attempt to Read() will throw an exception.
+        /// </remarks>
+        /// <returns>
+        /// A constructed <see cref="SqlDataReader"/>.
+        /// </returns>
+        public static async Task<SqlDataReader> ExecuteReaderAsync(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var command = connection.BuildSqlCommand(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, prepareCommand))
+            {
+                var result = await command.ExecuteReaderAsync(commandBehavior);  // can throw SqlException
+
+                return result;
             }
         }
 
         /// <summary>
-        /// Opens a connection to the database and determines if a command results in one or more rows of data.
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> and returns the number of rows affected.
         /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The number of rows affected.
+        /// </returns>
+        [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = ObcSuppressBecause.CA2202_DoNotDisposeObjectsMultipleTimes_AnalyzerIsIncorrectlyFlaggingObjectAsBeingDisposedMultipleTimes)]
+        public static int ExecuteNonQuery(
+            this string connectionString,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            bool prepareCommand = false)
+        {
+            using (var connection = connectionString.OpenSqlConnection())
+            {
+                var result = connection.ExecuteNonQuery(commandText, commandTimeoutInSeconds, commandParameters, commandType, null, prepareCommand);
+
+                connection.Close();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns the number of rows affected.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The number of rows affected.
+        /// </returns>
+        public static int ExecuteNonQuery(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            bool prepareCommand = false)
+        {
+            using (var command = connection.BuildSqlCommand(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, prepareCommand))
+            {
+                var result = command.ExecuteNonQuery();  // can throw SqlException
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> and returns the number of rows affected.
+        /// </summary>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The number of rows affected.
+        /// </returns>
+        public static async Task<int> ExecuteNonQueryAsync(
+            this string connectionString,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            bool prepareCommand = false)
+        {
+            using (var connection = await connectionString.OpenSqlConnectionAsync())
+            {
+                var result = await connection.ExecuteNonQueryAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, null, prepareCommand);
+
+                connection.Close();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns the number of rows affected.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The number of rows affected.
+        /// </returns>
+        public static async Task<int> ExecuteNonQueryAsync(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            bool prepareCommand = false)
+        {
+            using (var command = connection.BuildSqlCommand(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, prepareCommand))
+            {
+                var result = await command.ExecuteNonQueryAsync();  // can throw SqlException
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes <paramref name="batchCommandText"/>, and returns the number of rows affected for each individual command.
+        /// </summary>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="batchCommandText">The batch SQL command to execute.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <remarks>
+        /// This method does not support parameters.  Parameter object must be unique per command - parameters cannot be reused across commands.
+        /// All commands in the batch are expected to be Text commands.
+        /// </remarks>
+        /// <returns>
+        /// The number of rows affected for each individual command that is executed.
+        /// </returns>
+        [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = ObcSuppressBecause.CA2202_DoNotDisposeObjectsMultipleTimes_AnalyzerIsIncorrectlyFlaggingObjectAsBeingDisposedMultipleTimes)]
+        public static IReadOnlyList<int> ExecuteNonQueryBatch(
+            this string connectionString,
+            string batchCommandText,
+            int commandTimeoutInSeconds = 30)
+        {
+            new { batchCommandText }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            var statements = SqlBatchStatementSplitter.SplitSqlAndRemoveEmptyStatements(batchCommandText);
+
+            if (!statements.Any())
+            {
+                throw new InvalidOperationException(Invariant($"No individual commands found in {nameof(batchCommandText)}."));
+            }
+
+            using (var connection = connectionString.OpenSqlConnection())
+            {
+                var result = connection.ExecuteNonQueryBatch(batchCommandText, commandTimeoutInSeconds);
+
+                connection.Close();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="batchCommandText"/> against the <paramref name="connection"/> and returns the number of rows affected for each individual command.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="batchCommandText">The batch SQL command to execute.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <remarks>
+        /// This method does not support parameters.  Parameter object must be unique per command - parameters cannot be reused across commands.
+        /// All commands in the batch are expected to be Text commands.
+        /// </remarks>
+        /// <returns>
+        /// The number of rows affected for each individual command that is executed.
+        /// </returns>
+        public static IReadOnlyList<int> ExecuteNonQueryBatch(
+            this SqlConnection connection,
+            string batchCommandText,
+            int commandTimeoutInSeconds = 30,
+            SqlTransaction transaction = null)
+        {
+            new { batchCommandText }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            var statements = SqlBatchStatementSplitter.SplitSqlAndRemoveEmptyStatements(batchCommandText);
+
+            if (!statements.Any())
+            {
+                throw new InvalidOperationException(Invariant($"no individual commands found in {nameof(batchCommandText)}"));
+            }
+
+            var result = new List<int>();
+
+            foreach (var statement in statements)
+            {
+                var rowsAffected = connection.ExecuteNonQuery(statement, commandTimeoutInSeconds, transaction: transaction);
+
+                result.Add(rowsAffected);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes <paramref name="batchCommandText"/>, and returns the number of rows affected for each individual command.
+        /// </summary>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="batchCommandText">The batch SQL command to execute.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <remarks>
+        /// This method does not support parameters.  Parameter object must be unique per command - parameters cannot be reused across commands.
+        /// All commands in the batch are expected to be Text commands.
+        /// </remarks>
+        /// <returns>
+        /// The number of rows affected for each individual command that is executed.
+        /// </returns>
+        public static async Task<IReadOnlyList<int>> ExecuteNonQueryBatchAsync(
+            this string connectionString,
+            string batchCommandText,
+            int commandTimeoutInSeconds = 30)
+        {
+            using (var connection = await connectionString.OpenSqlConnectionAsync())
+            {
+                var result = await connection.ExecuteNonQueryBatchAsync(batchCommandText, commandTimeoutInSeconds);
+
+                connection.Close();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="batchCommandText"/> against the <paramref name="connection"/> and returns the number of rows affected for each individual command.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="batchCommandText">The batch SQL command to execute.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <remarks>
+        /// This method does not support parameters.  Parameter object must be unique per command - parameters cannot be reused across commands.
+        /// All commands in the batch are expected to be Text commands.
+        /// </remarks>
+        /// <returns>
+        /// The number of rows affected for each individual command that is executed.
+        /// </returns>
+        public static async Task<IReadOnlyList<int>> ExecuteNonQueryBatchAsync(
+            this SqlConnection connection,
+            string batchCommandText,
+            int commandTimeoutInSeconds = 30,
+            SqlTransaction transaction = null)
+        {
+            new { batchCommandText }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            var statements = SqlBatchStatementSplitter.SplitSqlAndRemoveEmptyStatements(batchCommandText);
+
+            if (!statements.Any())
+            {
+                throw new InvalidOperationException(Invariant($"no individual commands found in {nameof(batchCommandText)}"));
+            }
+
+            var result = new List<int>();
+
+            foreach (var statement in statements)
+            {
+                var rowsAffected = await connection.ExecuteNonQueryAsync(statement, commandTimeoutInSeconds, transaction: transaction);
+
+                result.Add(rowsAffected);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/>,
+        /// and determines if reading from the <see cref="SqlDataReader"/> results in at least one row of data.
+        /// </summary>
         /// <remarks>
         /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
         /// </remarks>
         /// <param name="connectionString">String used to open a connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns true if the command results in one or more rows of data.  Returns false if not.</returns>
-        /// From OpenConnection via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static bool CommandHasRows<T>(
-            string connectionString,
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// true if executing the command results in at least one row of data; otherwise false.
+        /// </returns>
+        [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = ObcSuppressBecause.CA2202_DoNotDisposeObjectsMultipleTimes_AnalyzerIsIncorrectlyFlaggingObjectAsBeingDisposedMultipleTimes)]
+        public static bool HasAtLeastOneRowWhenReading(
+            this string connectionString,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
         {
-            using (IDataReader reader = ExecuteReader<T>(connectionString, commandText, commandParameters, commandType, CommandBehavior.CloseConnection, prepareCommand, timeoutSeconds))
+            using (var reader = connectionString.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
             {
-                return DataReaderHasRows(reader);
+                var result = reader.Read();
+
+                reader.Close();
+
+                return result;
             }
         }
 
         /// <summary>
-        /// Executes the command text against a connection and returns a single column of values.
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/>
+        /// and determines if reading from the <see cref="SqlDataReader"/> results in at least one row of data.
         /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
+        /// <param name="connection">An open connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns a <see cref="Collection{T}"/> where each item corresponds to a value in the result of the query.</returns>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// <exception cref="InvalidOperationException">There is an open SqlDataReader associated with the connection.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one column.</exception>
-        /// <exception cref="InvalidOperationException">Query results in no rows.</exception>
-        public static Collection<object> ReadSingleColumn(
-            IDbConnection connection,
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// true if executing the command results in at least one row of data; otherwise false.
+        /// </returns>
+        [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = ObcSuppressBecause.CA2202_DoNotDisposeObjectsMultipleTimes_AnalyzerIsIncorrectlyFlaggingObjectAsBeingDisposedMultipleTimes)]
+        public static bool HasAtLeastOneRowWhenReading(
+            this SqlConnection connection,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
         {
-            using (IDataReader reader = ExecuteReader(connection, commandText, commandParameters, commandType, transaction, CommandBehavior.Default, prepareCommand, timeoutSeconds))
+            using (var reader = connection.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
             {
-                return ReadSingleColumn(reader);
+                var result = reader.Read();
+
+                reader.Close();
+
+                return result;
             }
         }
 
         /// <summary>
-        /// Opens a connection to the database and executes the command text to return a single column of values.
+        /// Opens a connection to the database, executes the <paramref name="commandText"/>,
+        /// and determines if reading from the <see cref="SqlDataReader"/> results in at least one row of data.
         /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
         /// <remarks>
         /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
         /// </remarks>
         /// <param name="connectionString">String used to open a connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns a <see cref="Collection{T}"/> where each item corresponds to a value in the result of the query.</returns>
-        /// From OpenConnection via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one column.</exception>
-        /// <exception cref="InvalidOperationException">Query results in no rows.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static Collection<object> ReadSingleColumn<T>(
-            string connectionString,
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// true if executing the command results in at least one row of data; otherwise false.
+        /// </returns>
+        public static async Task<bool> HasAtLeastOneRowWhenReadingAsync(
+            this string connectionString,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
         {
-            using (IDataReader reader = ExecuteReader<T>(connectionString, commandText, commandParameters, commandType, CommandBehavior.CloseConnection, prepareCommand, timeoutSeconds))
+            using (var reader = await connectionString.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
             {
-                return ReadSingleColumn(reader);
+                var result = await reader.ReadAsync();
+
+                reader.Close();
+
+                return result;
             }
         }
 
         /// <summary>
-        /// Executes the command text against a connection and returns the resulting value.
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/>
+        /// and determines if reading from the <see cref="SqlDataReader"/> results in at least one row of data.
         /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
+        /// <param name="connection">An open connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns the resulting value.</returns>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// <exception cref="InvalidOperationException">There is an open SqlDataReader associated with the connection.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Query resulted in no rows.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one column.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one row.</exception>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// true if executing the command results in at least one row of data; otherwise false.
+        /// </returns>
+        public static async Task<bool> HasAtLeastOneRowWhenReadingAsync(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = await connection.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = await reader.ReadAsync();
+
+                reader.Close();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> against the connection, and returns a single column of values.
+        /// Throws if the query results in 0 or multiple columns.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The results of the query in the order their were returned from the database.
+        /// </returns>
+        public static IReadOnlyList<object> ReadSingleColumn(
+            this string connectionString,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
+        {
+            using (var reader = connectionString.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
+            {
+                var result = reader.ReadSingleColumnInternal();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns a single column of values.
+        /// Throws if the query results in 0 or multiple columns.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The results of the query in the order their were returned from the database.
+        /// </returns>
+        public static IReadOnlyList<object> ReadSingleColumn(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = connection.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = reader.ReadSingleColumnInternal();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> against the connection, and returns a single column of values.
+        /// Throws if the query results in 0 or multiple columns.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The results of the query in the order their were returned from the database.
+        /// </returns>
+        public static async Task<IReadOnlyList<object>> ReadSingleColumnAsync(
+            this string connectionString,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
+        {
+            using (var reader = await connectionString.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
+            {
+                var result = await reader.ReadSingleColumnInternalAsync();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns a single column of values.
+        /// Throws if the query results in 0 or multiple columns.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The results of the query in the order their were returned from the database.
+        /// </returns>
+        public static async Task<IReadOnlyList<object>> ReadSingleColumnAsync(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = await connection.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = await reader.ReadSingleColumnInternalAsync();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> against the connection, and returns the resulting value.
+        /// Throws if there are no rows, multiple rows, no columns, or multiple columns.
+        /// This is a more restrictive version of <see cref="SqlCommand.ExecuteScalar"/>.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The resulting value.
+        /// </returns>
         public static object ReadSingleValue(
-            IDbConnection connection,
+            this string connectionString,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
         {
-            using (IDataReader reader = ExecuteReader(connection, commandText, commandParameters, commandType, transaction, CommandBehavior.Default, prepareCommand, timeoutSeconds))
+            using (var reader = connectionString.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
             {
-                return ReadSingleValue(reader);
+                var result = reader.ReadSingleValueInternal();
+
+                return result;
             }
         }
 
         /// <summary>
-        /// Opens a connection to the database and executes the command text, returning the resulting value.
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns the resulting value.
+        /// Throws if there are no rows, multiple rows, no columns, or multiple columns.
+        /// This is a more restrictive version of <see cref="SqlCommand.ExecuteScalar"/>.
         /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The resulting value.
+        /// </returns>
+        public static object ReadSingleValue(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = connection.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = reader.ReadSingleValueInternal();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> against the connection, and returns the resulting value.
+        /// Throws if there are no rows, multiple rows, no columns, or multiple columns.
+        /// This is a more restrictive version of <see cref="SqlCommand.ExecuteScalar"/>.
+        /// </summary>
         /// <remarks>
         /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
         /// </remarks>
-        /// <returns>Returns the resulting value.</returns>
         /// <param name="connectionString">String used to open a connection to the database.</param>
         /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// From OpenConnection via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Query results in no rows.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one column.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one row.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static object ReadSingleValue<T>(
-            string connectionString,
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The resulting value.
+        /// </returns>
+        public static async Task<object> ReadSingleValueAsync(
+            this string connectionString,
             string commandText,
-            IDataParameter[] commandParameters = null,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
             CommandType commandType = CommandType.Text,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
         {
-            using (IDataReader reader = ExecuteReader<T>(connectionString, commandText, commandParameters, commandType, CommandBehavior.CloseConnection, prepareCommand, timeoutSeconds))
+            using (var reader = await connectionString.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
             {
-                return ReadSingleValue(reader);
+                var result = await reader.ReadSingleValueInternalAsync();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns the resulting value.
+        /// Throws if there are no rows, multiple rows, no columns, or multiple columns.
+        /// This is a more restrictive version of <see cref="SqlCommand.ExecuteScalar"/>.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// The resulting value.
+        /// </returns>
+        public static async Task<object> ReadSingleValueAsync(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = await connection.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = await reader.ReadSingleValueInternalAsync();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> against the connection, and returns a single row of values.
+        /// Throws if there are no rows, multiple rows, or multiple columns with the same case-insensitive name.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// A dictionary where the keys are column names (case insensitive) and values are the values of the single row returned by the query.
+        /// </returns>
+        public static IReadOnlyDictionary<string, object> ReadSingleRow(
+            this string connectionString,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
+        {
+            using (var reader = connectionString.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
+            {
+                var result = reader.ReadSingleRowInternal();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns a single row of values.
+        /// Throws if there are no rows, multiple rows, or multiple columns with the same case-insensitive name.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// A dictionary where the keys are column names (case insensitive) and values are the values of the single row returned by the query.
+        /// </returns>
+        public static IReadOnlyDictionary<string, object> ReadSingleRow(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = connection.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = reader.ReadSingleRowInternal();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/> against the connection, and returns a single row of values.
+        /// Throws if there are no rows, multiple rows, or multiple columns with the same case-insensitive name.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// A dictionary where the keys are column names (case insensitive) and values are the values of the single row returned by the query.
+        /// </returns>
+        public static async Task<IReadOnlyDictionary<string, object>> ReadSingleRowAsync(
+            this string connectionString,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
+        {
+            using (var reader = await connectionString.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
+            {
+                var result = await reader.ReadSingleRowInternalAsync();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and returns a single row of values.
+        /// Throws if there are no rows, multiple rows, or multiple columns with the same case-insensitive name.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// A dictionary where the keys are column names (case insensitive) and values are the values of the single row returned by the query.
+        /// </returns>
+        public static async Task<IReadOnlyDictionary<string, object>> ReadSingleRowAsync(
+            this SqlConnection connection,
+            string commandText,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            using (var reader = await connection.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+            {
+                var result = await reader.ReadSingleRowInternalAsync();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/>, and writes the results to a CSV file.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="outputFilePath">Path to file where CSV data should be written.</param>
+        /// <param name="includeColumnNames">Indicates whether the first row should be populated with column names.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        public static void WriteToCsv(
+            this string connectionString,
+            string commandText,
+            string outputFilePath,
+            bool includeColumnNames = true,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
+        {
+            new { outputFilePath }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            using (var writer = new StreamWriter(outputFilePath))
+            {
+                using (var reader = connectionString.ExecuteReader(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
+                {
+                    reader.WriteToCsv(writer, includeColumnNames);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Opens a connection to the database, executes the <paramref name="commandText"/>, and writes the results to a CSV file.
+        /// </summary>
+        /// <remarks>
+        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
+        /// </remarks>
+        /// <param name="connectionString">String used to open a connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="outputFilePath">Path to file where CSV data should be written.</param>
+        /// <param name="includeColumnNames">Indicates whether the first row should be populated with column names.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        /// <returns>
+        /// A task.
+        /// </returns>
+        public static async Task WriteToCsvAsync(
+            this string connectionString,
+            string commandText,
+            string outputFilePath,
+            bool includeColumnNames = true,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            CommandBehavior commandBehavior = CommandBehavior.CloseConnection,
+            bool prepareCommand = false)
+        {
+            new { outputFilePath }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            using (var writer = new StreamWriter(outputFilePath))
+            {
+                using (var reader = await connectionString.ExecuteReaderAsync(commandText, commandTimeoutInSeconds, commandParameters, commandType, commandBehavior, prepareCommand))
+                {
+                    await reader.WriteToCsvAsync(writer, includeColumnNames);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes the <paramref name="commandText"/> against the <paramref name="connection"/> and writes the results to a CSV file.
+        /// </summary>
+        /// <param name="connection">An open connection to the database.</param>
+        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
+        /// <param name="outputFilePath">Path to file where CSV data should be written.</param>
+        /// <param name="includeColumnNames">Indicates whether the first row should be populated with column names.</param>
+        /// <param name="commandTimeoutInSeconds">OPTIONAL value with the wait time, in seconds, before terminating an attempt to execute the command and generating an error.  DEFAULT is 30 seconds.  A value of 0 indicates no limit (an attempt to execute a command will wait indefinitely).</param>
+        /// <param name="commandParameters">OPTIONAL set of parameters to associate with the command.  DEFAULT is null (no parameters).</param>
+        /// <param name="commandType">OPTIONAL value that determines how the command text is to be interpreted.  DEFAULT is <see cref="CommandType.Text"/>; a SQL text command.</param>
+        /// <param name="transaction">OPTIONAL transaction within which the command will execute.  DEFAULT is null (no transaction).</param>
+        /// <param name="commandBehavior">OPTIONAL value providing a description of the results of the query and its effect on the database.  DEFAULT is <see cref="CommandBehavior.Default"/>; the query may return multiple result sets and execution of the query may affect the database state.  This enumeration has a FlagsAttribute attribute that allows a bitwise combination of its member values.</param>
+        /// <param name="prepareCommand">OPTIONAL value indicating whether to prepared (or compile) the command on the data source.</param>
+        public static void WriteToCsv(
+            this SqlConnection connection,
+            string commandText,
+            string outputFilePath,
+            bool includeColumnNames = true,
+            int commandTimeoutInSeconds = 30,
+            IReadOnlyList<SqlParameter> commandParameters = null,
+            CommandType commandType = CommandType.Text,
+            SqlTransaction transaction = null,
+            CommandBehavior commandBehavior = CommandBehavior.Default,
+            bool prepareCommand = false)
+        {
+            new { outputFilePath }.AsArg().Must().NotBeNullNorWhiteSpace();
+
+            using (var writer = new StreamWriter(outputFilePath))
+            {
+                using (var reader = ExecuteReader(connection, commandText, commandTimeoutInSeconds, commandParameters, commandType, transaction, commandBehavior, prepareCommand))
+                {
+                    reader.WriteToCsv(writer, includeColumnNames);
+                }
             }
         }
 
@@ -625,12 +1273,8 @@ namespace OBeautifulCode.Database.Recipes
         /// Rollback a transaction with the proper error handling.
         /// </summary>
         /// <param name="transaction">The transaction to rollback.</param>
-        /// <exception cref="ArgumentNullException">transaction is null.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid.</exception>
-        /// <exception cref="InvalidOperationException">trying to rollback a transaction that has already been committed or rolled back -or- the connection was broken.</exception>
-        /// <exception cref="InvalidOperationException">there's an issue rolling back the transaction.</exception>
         public static void RollbackTransaction(
-            SqlTransaction transaction)
+            this SqlTransaction transaction)
         {
             new { transaction }.AsArg().Must().NotBeNull();
 
@@ -659,423 +1303,26 @@ namespace OBeautifulCode.Database.Recipes
         /// Returns the bit representation of a boolean.
         /// </summary>
         /// <param name="value">The boolean to evaluate.</param>
-        /// <returns>Returns "1" if boolean is true, "0" if boolean is false.</returns>
+        /// <returns>
+        /// "1" if boolean is true, "0" if boolean is false.
+        /// </returns>
         public static string ToBit(
             this bool value)
         {
             return value ? "1" : "0";
         }
 
-        /// <summary>
-        /// Executes the command text against a connection and returns a single row of values.
-        /// </summary>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
-        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns a dictionary where the keys are column names and values are the values of the single row returned by the query.</returns>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// <exception cref="InvalidOperationException">There is an open SqlDataReader associated with the connection.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Query results in now rows.</exception>
-        /// <exception cref="InvalidOperationException">Query results in two columns with same name.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one row.</exception>
-        public static Dictionary<string, object> ReadSingleRow(
-            IDbConnection connection,
-            string commandText,
-            IDataParameter[] commandParameters = null,
-            CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-        {
-            using (IDataReader reader = ExecuteReader(connection, commandText, commandParameters, commandType, transaction, CommandBehavior.Default, prepareCommand, timeoutSeconds))
-            {
-                return ReadSingleRow(reader);
-            }
-        }
-
-        /// <summary>
-        /// Opens a connection to the database and executes the command text, returning a single row of values.
-        /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
-        /// <remarks>
-        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
-        /// </remarks>
-        /// <param name="connectionString">String used to open a connection to the database.</param>
-        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// <returns>Returns a dictionary where the keys are column names and values are the values of the single row returned by the query.</returns>
-        /// From OpenConnection via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// From this method:
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="InvalidOperationException">Query results in now rows.</exception>
-        /// <exception cref="InvalidOperationException">Query results in two columns with same name.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one row.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static Dictionary<string, object> ReadSingleRow<T>(
-            string connectionString,
-            string commandText,
-            IDataParameter[] commandParameters = null,
-            CommandType commandType = CommandType.Text,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
-        {
-            using (IDataReader reader = ExecuteReader<T>(connectionString, commandText, commandParameters, commandType, CommandBehavior.CloseConnection, prepareCommand, timeoutSeconds))
-            {
-                return ReadSingleRow(reader);
-            }
-        }
-
-        /// <summary>
-        /// Writes a result set to a CSV file.
-        /// </summary>
-        /// <remarks>
-        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
-        /// </remarks>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
-        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="outputFilePath">Path to file where CSV data should be written.</param>
-        /// <param name="includeColumnNames">Indicates whether the first row should be populated with column names.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// <exception cref="InvalidOperationException">There is an open SqlDataReader associated with the connection.</exception>
-        /// From this method:
-        /// <exception cref="ArgumentException">outputFilePath is null or whitespace.</exception>
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="DirectoryNotFoundException">the specified path is invalid, such as being on an unmapped drive or not existing.</exception>
-        /// <exception cref="IOException">I/O error accessing outputFilePath such as when there's a lock on the path.</exception>
-        /// <exception cref="UnauthorizedAccessException">Access is denied to outputFilePath.</exception>
-        /// <exception cref="SecurityException">the caller does not have the required permission to write to outputFilePath.</exception>
-        /// <exception cref="InvalidOperationException">a result set wasn't found when executing the command.  Command is a non-query.</exception>
-        public static void WriteToCsv(
-            IDbConnection connection,
-            string commandText,
-            string outputFilePath,
-            bool includeColumnNames = true,
-            IDataParameter[] commandParameters = null,
-            CommandType commandType = CommandType.Text,
-            IDbTransaction transaction = null,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-        {
-            new { outputFilePath }.AsArg().Must().NotBeNullNorWhiteSpace();
-
-            using (var writer = new StreamWriter(outputFilePath))
-            {
-                using (IDataReader reader = ExecuteReader(connection, commandText, commandParameters, commandType, transaction, CommandBehavior.Default, prepareCommand, timeoutSeconds))
-                {
-                    WriteToCsv(reader, writer, includeColumnNames);
-                } // using SqlDataReader
-            } // using writer
-        }
-
-        /// <summary>
-        /// Writes a result set to a CSV file.
-        /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
-        /// <remarks>
-        /// Sets CommandBehavior = CommandBehavior.CloseConnection so that the created connection is closed when the data reader is closed.
-        /// </remarks>
-        /// <param name="connectionString">String used to open a connection to the database.</param>
-        /// <param name="commandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="outputFilePath">Path to file where CSV data should be written.</param>
-        /// <param name="includeColumnNames">Indicates whether the first row should be populated with column names.</param>
-        /// <param name="commandParameters">A set of parameters to associate with the command.</param>
-        /// <param name="commandType">Determines how the command text is to be interpreted.</param>
-        /// <param name="prepareCommand">If true, creates a prepared (or compiled) version of the command on the data source.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// From OpenConnection via ExecuteReader:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteReader:
-        /// <exception cref="ArgumentNullException">commandText is null.</exception>
-        /// <exception cref="ArgumentException">commandText is whitespace.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="InvalidOperationException">Attempting to set a parameter of a type that was designed for a data provider other than the provider represented by the specified connection.</exception>
-        /// From ExecuteReader:
-        /// <exception cref="SqlException">An exception occurred while executing the command or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// From this method:
-        /// <exception cref="ArgumentException">outputFilePath is null or whitespace.</exception>
-        /// <exception cref="SqlException">If parameters specified, type mismatch between variable in command the value of named parameter.</exception>
-        /// <exception cref="DirectoryNotFoundException">the specified path is invalid, such as being on an unmapped drive or not existing.</exception>
-        /// <exception cref="IOException">I/O error accessing outputFilePath such as when there's a lock on the path.</exception>
-        /// <exception cref="UnauthorizedAccessException">Access is denied to outputFilePath.</exception>
-        /// <exception cref="SecurityException">the caller does not have the required permission to write to outputFilePath.</exception>
-        /// <exception cref="InvalidOperationException">a result set wasn't found when executing the command.  Command is a non-query.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static void WriteToCsv<T>(
-            string connectionString,
-            string commandText,
-            string outputFilePath,
-            bool includeColumnNames = true,
-            IDataParameter[] commandParameters = null,
-            CommandType commandType = CommandType.Text,
-            bool prepareCommand = false,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
-        {
-            new { outputFilePath }.AsArg().Must().NotBeNullNorWhiteSpace();
-
-            using (var writer = new StreamWriter(outputFilePath))
-            {
-                using (IDataReader reader = ExecuteReader<T>(connectionString, commandText, commandParameters, commandType, CommandBehavior.CloseConnection, prepareCommand, timeoutSeconds))
-                {
-                    WriteToCsv(reader, writer, includeColumnNames);
-                } // using SqlDataReader
-            } // using writer
-        }
-
-        /// <summary>
-        /// Executes an batch SQL command against a connection and returns the total number of rows affected.
-        /// </summary>
-        /// <remarks>
-        /// This method does not support parameters.  Parameter object must be unique per command - parameters cannot be reused across commands.
-        /// All commands in the batch are expected to be Text commands.
-        /// </remarks>
-        /// <returns>Returns the total number of rows affected.</returns>
-        /// <param name="connection">An <see cref="IDbConnection"/> that represents the connection to a database.</param>
-        /// <param name="batchCommandText">The SQL statement, table name, or stored procedure to execute at the data source.</param>
-        /// <param name="transaction">The transaction within which the command will execute.</param>
-        /// <param name="timeoutSeconds">The wait time, in seconds, before terminating an attempt to execute the command and generating an error.</param>
-        /// From BuildCommand via ExecuteNonQuery:
-        /// <exception cref="ArgumentNullException">connection is null.</exception>
-        /// <exception cref="ArgumentException">connection is in an invalid state (must be Open).</exception>
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// <exception cref="ArgumentException">transaction is invalid (has been rolled back or committed).</exception>
-        /// <exception cref="ArgumentException">transaction is using a different connection than the specified connection.</exception>
-        /// From ExecuteNonQuery:
-        /// <exception cref="SqlException">An exception occurred while executing a command in the batch or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// <exception cref="InvalidOperationException">Connection is pending a local transaction.</exception>
-        /// From this method:
-        /// <exception cref="ArgumentException">batchSqlCommand is null or whitespace.</exception>
-        /// <exception cref="InvalidOperationException">no commands found in commandText.</exception>
-        public static int ExecuteNonQueryBatch(
-            IDbConnection connection,
-            string batchCommandText,
-            IDbTransaction transaction = null,
-            int timeoutSeconds = 0)
-        {
-            new { batchCommandText }.AsArg().Must().NotBeNullNorWhiteSpace();
-
-            IEnumerable<string> statements = SqlBatchStatementSplitter.SplitSqlAndRemoveEmptyStatements(batchCommandText);
-
-            // ReSharper disable once PossibleMultipleEnumeration
-            if (!statements.Any())
-            {
-                throw new InvalidOperationException(Invariant($"no individual commands found in {nameof(batchCommandText)}"));
-            }
-
-            // ReSharper disable once PossibleMultipleEnumeration
-            var result = statements.Sum(statement => ExecuteNonQuery(connection, statement, null, CommandType.Text, transaction, false, timeoutSeconds));
-            return result;
-        }
-
-        /// <summary>
-        /// Opens a connection to the database and executes an batch SQL command, returning the total number of rows affected.
-        /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbConnection"/> to open.  Must be a class.</typeparam>
-        /// <param name="connectionString">The database connection string.</param>
-        /// <param name="batchCommandText">The batch command to execute.</param>
-        /// <param name="timeoutSeconds">The command timeout in seconds..</param>
-        /// <remarks>
-        /// This method does not support parameters.  Parameter object must be unique per command - parameters cannot be reused across commands.
-        /// All commands in the batch are expected to be Text commands.
-        /// </remarks>
-        /// <returns>Returns the total number of rows affected.</returns>
-        /// From OpenConnection via ExecuteNonQuery:
-        /// <exception cref="ArgumentNullException">connectionString is null.</exception>
-        /// <exception cref="ArgumentException">connectionString is whitespace.</exception>
-        /// <exception cref="ArgumentException">connectionString isn't formatted properly.</exception>
-        /// <exception cref="SqlException">A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset.</exception>
-        /// From BuildCommand via ExecuteNonQuery:
-        /// <exception cref="ArgumentOutOfRangeException">timeoutSeconds is less than 0.</exception>
-        /// From ExecuteNonQuery:
-        /// <exception cref="SqlException">An exception occurred while executing a command in the batch or there was a timeout.</exception>
-        /// <exception cref="SqlException">A parameter is missing.</exception>
-        /// From this method:
-        /// <exception cref="ArgumentException">batchSqlCommand is null or whitespace.</exception>
-        /// <exception cref="InvalidOperationException">no commands found in commandText.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "The type is used to create a specific type of connection.")]
-        public static int ExecuteNonQueryBatch<T>(
-            string connectionString,
-            string batchCommandText,
-            int timeoutSeconds = 0)
-            where T : class, IDbConnection, new()
-        {
-            new { batchCommandText }.AsArg().Must().NotBeNullNorWhiteSpace();
-
-            IEnumerable<string> statements = SqlBatchStatementSplitter.SplitSqlAndRemoveEmptyStatements(batchCommandText);
-
-            // ReSharper disable once PossibleMultipleEnumeration
-            if (!statements.Any())
-            {
-                throw new InvalidOperationException(Invariant($"no individual commands found in {nameof(batchCommandText)}"));
-            }
-
-            // ReSharper disable once PossibleMultipleEnumeration
-            var result = statements.Sum(statement => ExecuteNonQuery<T>(connectionString, statement, null, CommandType.Text, false, timeoutSeconds));
-            return result;
-        }
-
-        /// <summary>
-        /// Request a new data parameter from the data source.
-        /// </summary>
-        /// <typeparam name="T">The type of <see cref="IDbDataParameter"/> to create.</typeparam>
-        /// <param name="name">Specifies the parameter name.</param>
-        /// <param name="type">Specifies the parameter provider-(in)dependent type.</param>
-        /// <param name="value">Specifies the parameter value.</param>
-        /// <param name="direction">Specifies the parameter direction.</param>
-        /// <param name="size">Specifies the parameter size.</param>
-        /// <param name="precision">Specifies the parameter precision.</param>
-        /// <param name="scale">Specifies the parameter scale.</param>
-        /// <param name="nullable">Specifies the parameter as nullable or not.</param>
-        /// <returns>The data parameter with the specified properties set.</returns>
-        /// <exception cref="ArgumentNullException">name is null.</exception>
-        /// <exception cref="ArgumentException">Parameter name is not 2 characters in length at a minimum.</exception>
-        /// <exception cref="ArgumentException">Parameter name does not being with '@'.</exception>
-        /// <exception cref="ArgumentException">Parameter name is not alphanumeric.</exception>
-        public static T CreateParameter<T>(
-            string name,
-            DbType type,
-            object value,
-            ParameterDirection direction = ParameterDirection.Input,
-            int? size = null,
-            byte? precision = null,
-            byte? scale = null,
-            bool nullable = false)
-            where T : IDbDataParameter, new()
-        {
-            // check parameters
-            new { name }.AsArg().Must().NotBeNullNorWhiteSpace();
-
-            if (name.Length < 2)
-            {
-                throw new ArgumentException("Parameter name is not 2 characters in length at a minimum.");
-            }
-
-            if (name[0] != '@')
-            {
-                throw new ArgumentException("Parameter name does not being with '@'.");
-            }
-
-            if (!name.Substring(1).IsAlphanumeric())
-            {
-                throw new ArgumentException("Parameter name is not alphanumeric.");
-            }
-
-            // create parameter
-            // ReSharper disable once UseObjectOrCollectionInitializer
-            var parameter = new T();
-
-            // set properties
-            parameter.ParameterName = name;
-            parameter.Direction = direction;
-            parameter.DbType = type;
-            if (size != null)
-            {
-                parameter.Size = (int)size;
-            }
-
-            if (precision != null)
-            {
-                parameter.Precision = (byte)precision;
-            }
-
-            if (scale != null)
-            {
-                parameter.Scale = (byte)scale;
-            }
-
-            var pi = parameter.GetType().GetProperty("IsNullable");
-            if (pi != null && pi.CanWrite)
-            {
-                pi.SetValue(parameter, nullable, null);
-            }
-
-            parameter.Value = value ?? DBNull.Value;
-
-            return parameter;
-        }
-
-        /// <summary>
-        /// Determines if an <see cref="IDataReader"/> has a row to read.
-        /// </summary>
-        /// <param name="reader">The <see cref="IDataReader"/> to evaluate.</param>
-        /// <returns>Returns true if the <see cref="IDataReader"/> has any rows, false if not.</returns>
-        private static bool DataReaderHasRows(
-            IDataReader reader)
-        {
-            bool result = reader.Read();
-            reader.Close();
-            return result;
-        }
-
-        /// <summary>
-        /// Reads a single column of values from a data reader.
-        /// </summary>
-        /// <param name="reader">The <see cref="IDataReader"/> to read from.</param>
-        /// <returns>Returns a <see cref="Collection{T}"/> where each item corresponds to a value in the result of the query.</returns>
-        /// <exception cref="InvalidOperationException">Query results in more than one column.</exception>
-        /// <exception cref="InvalidOperationException">Query results in no rows.</exception>
-        private static Collection<object> ReadSingleColumn(
-            IDataReader reader)
+        private static IReadOnlyList<object> ReadSingleColumnInternal(
+            this SqlDataReader reader)
         {
             try
             {
                 var result = new List<object>();
+
+                if (reader.FieldCount == 0)
+                {
+                    throw new InvalidOperationException("Query results in no columns.");
+                }
 
                 if (reader.FieldCount != 1)
                 {
@@ -1087,12 +1334,7 @@ namespace OBeautifulCode.Database.Recipes
                     result.Add(reader.IsDBNull(0) ? null : reader[0]);
                 }
 
-                if (result.Count == 0)
-                {
-                    throw new InvalidOperationException("Query results in no rows.");
-                }
-
-                return new Collection<object>(result);
+                return result;
             }
             finally
             {
@@ -1100,16 +1342,38 @@ namespace OBeautifulCode.Database.Recipes
             }
         }
 
-        /// <summary>
-        /// Reads a single value from a data reader.
-        /// </summary>
-        /// <param name="reader">The <see cref="IDataReader"/> to read from.</param>
-        /// <returns>Returns the resulting value.</returns>
-        /// <exception cref="InvalidOperationException">Query results in no rows.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one column.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one row.</exception>
-        private static object ReadSingleValue(
-            IDataReader reader)
+        private static async Task<IReadOnlyList<object>> ReadSingleColumnInternalAsync(
+            this SqlDataReader reader)
+        {
+            try
+            {
+                var result = new List<object>();
+
+                if (reader.FieldCount == 0)
+                {
+                    throw new InvalidOperationException("Query results in no columns.");
+                }
+
+                if (reader.FieldCount != 1)
+                {
+                    throw new InvalidOperationException("Query results in more than one column.");
+                }
+
+                while (await reader.ReadAsync())
+                {
+                    result.Add(reader.IsDBNull(0) ? null : reader[0]);
+                }
+
+                return result;
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        private static object ReadSingleValueInternal(
+            this SqlDataReader reader)
         {
             try
             {
@@ -1118,12 +1382,18 @@ namespace OBeautifulCode.Database.Recipes
                     throw new InvalidOperationException("Query results in no rows.");
                 }
 
+                if (reader.FieldCount == 0)
+                {
+                    throw new InvalidOperationException("Query results in no columns.");
+                }
+
                 if (reader.FieldCount != 1)
                 {
                     throw new InvalidOperationException("Query results in more than one column.");
                 }
 
                 object result = null;
+
                 if (!reader.IsDBNull(0))
                 {
                     result = reader[0];
@@ -1142,17 +1412,48 @@ namespace OBeautifulCode.Database.Recipes
             }
         }
 
-        /// <summary>
-        /// Reads a single row of data from a data reader.
-        /// Values are returned as a Dictionary where key is the column name (lower-case), and value is the value of that particular column.
-        /// </summary>
-        /// <param name="reader">The <see cref="IDataReader"/> to read from.</param>
-        /// <returns>Returns a dictionary where the keys are column names and values are the values of the single row returned by the query.</returns>
-        /// <exception cref="InvalidOperationException">Query results in now rows.</exception>
-        /// <exception cref="InvalidOperationException">Query results in two columns with same name.</exception>
-        /// <exception cref="InvalidOperationException">Query results in more than one row.</exception>
-        private static Dictionary<string, object> ReadSingleRow(
-            IDataReader reader)
+        private static async Task<object> ReadSingleValueInternalAsync(
+            this SqlDataReader reader)
+        {
+            try
+            {
+                if (!(await reader.ReadAsync()))
+                {
+                    throw new InvalidOperationException("Query results in no rows.");
+                }
+
+                if (reader.FieldCount == 0)
+                {
+                    throw new InvalidOperationException("Query results in no columns.");
+                }
+
+                if (reader.FieldCount != 1)
+                {
+                    throw new InvalidOperationException("Query results in more than one column.");
+                }
+
+                object result = null;
+
+                if (!reader.IsDBNull(0))
+                {
+                    result = reader[0];
+                }
+
+                if (await reader.ReadAsync())
+                {
+                    throw new InvalidOperationException("Query results in more than one row.");
+                }
+
+                return result;
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        private static IReadOnlyDictionary<string, object> ReadSingleRowInternal(
+            this SqlDataReader reader)
         {
             try
             {
@@ -1161,13 +1462,15 @@ namespace OBeautifulCode.Database.Recipes
                     throw new InvalidOperationException("Query results in no rows.");
                 }
 
-                var result = new Dictionary<string, object>();
-                for (int x = 0; x < reader.FieldCount; x++)
+                var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+                for (var x = 0; x < reader.FieldCount; x++)
                 {
-                    string fieldName = reader.GetName(x).ToLowerTrimmed(CultureInfo.InvariantCulture);
+                    var fieldName = reader.GetName(x);
+
                     if (result.ContainsKey(fieldName))
                     {
-                        throw new InvalidOperationException("Query results in two columns with the same name.");
+                        throw new InvalidOperationException(Invariant($"Query results in two columns with the same name: {fieldName}."));
                     }
 
                     result.Add(fieldName, reader.IsDBNull(x) ? null : reader[x]);
@@ -1186,7 +1489,47 @@ namespace OBeautifulCode.Database.Recipes
             }
         }
 
-        private static void WriteToCsv(IDataReader reader, StreamWriter writer, bool includeColumnNames)
+        private static async Task<IReadOnlyDictionary<string, object>> ReadSingleRowInternalAsync(
+            this SqlDataReader reader)
+        {
+            try
+            {
+                if (!(await reader.ReadAsync()))
+                {
+                    throw new InvalidOperationException("Query results in no rows.");
+                }
+
+                var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+                for (var x = 0; x < reader.FieldCount; x++)
+                {
+                    var fieldName = reader.GetName(x);
+
+                    if (result.ContainsKey(fieldName))
+                    {
+                        throw new InvalidOperationException(Invariant($"Query results in two columns with the same name: {fieldName}."));
+                    }
+
+                    result.Add(fieldName, reader.IsDBNull(x) ? null : reader[x]);
+                }
+
+                if (await reader.ReadAsync())
+                {
+                    throw new InvalidOperationException("Query results in more than one row.");
+                }
+
+                return result;
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        private static void WriteToCsv(
+            this SqlDataReader reader,
+            StreamWriter writer,
+            bool includeColumnNames)
         {
             try
             {
@@ -1199,7 +1542,8 @@ namespace OBeautifulCode.Database.Recipes
                 if (includeColumnNames)
                 {
                     var headers = new List<string>();
-                    for (int x = 0; x < reader.FieldCount; x++)
+
+                    for (var x = 0; x < reader.FieldCount; x++)
                     {
                         headers.Add(reader.GetName(x));
                     }
@@ -1211,7 +1555,8 @@ namespace OBeautifulCode.Database.Recipes
                 while (reader.Read())
                 {
                     var rowValues = new List<string>();
-                    for (int x = 0; x < reader.FieldCount; x++)
+
+                    for (var x = 0; x < reader.FieldCount; x++)
                     {
                         if (reader.IsDBNull(x))
                         {
@@ -1219,13 +1564,11 @@ namespace OBeautifulCode.Database.Recipes
                         }
                         else
                         {
-                            object value = reader.GetValue(x);
+                            var value = reader.GetValue(x);
 
                             // strings, chars, and char arrays need to be made CSV-safe.
-                            // other datatypes are guaranteed to never violate CSV-safety rules.
-                            var stringValue = value as string;
-                            var charArrayValue = value as char[];
-                            if (stringValue != null)
+                            // other data types are guaranteed to never violate CSV-safety rules.
+                            if (value is string stringValue)
                             {
                                 rowValues.Add(stringValue.ToCsvSafe());
                             }
@@ -1233,9 +1576,9 @@ namespace OBeautifulCode.Database.Recipes
                             {
                                 rowValues.Add(value.ToString().ToCsvSafe());
                             }
-                            else if (charArrayValue != null)
+                            else if (value is char[] charArrayValue)
                             {
-                                rowValues.Add(charArrayValue.Select(val => val.ToString(CultureInfo.InvariantCulture)).ToDelimitedString(string.Empty).ToCsvSafe());
+                                rowValues.Add(charArrayValue.Select(_ => _.ToString(CultureInfo.InvariantCulture)).ToDelimitedString(string.Empty).ToCsvSafe());
                             }
                             else if (value is DateTime valueAsDate)
                             {
@@ -1243,15 +1586,18 @@ namespace OBeautifulCode.Database.Recipes
                                 var dateAsString = string.Empty;
                                 if (valueAsDate.Kind == DateTimeKind.Unspecified)
                                 {
-                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+                                    // ReSharper disable once StringLiteralTypo
+                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
                                 }
                                 else if (valueAsDate.Kind == DateTimeKind.Local)
                                 {
-                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.fffzzz", CultureInfo.InvariantCulture);
+                                    // ReSharper disable once StringLiteralTypo
+                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.ffffffzzz", CultureInfo.InvariantCulture);
                                 }
                                 else if (valueAsDate.Kind == DateTimeKind.Utc)
                                 {
-                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.fffZ", CultureInfo.InvariantCulture);
+                                    // ReSharper disable once StringLiteralTypo
+                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.ffffffZ", CultureInfo.InvariantCulture);
                                 }
 
                                 rowValues.Add(dateAsString);
@@ -1267,6 +1613,101 @@ namespace OBeautifulCode.Database.Recipes
 
                     // since we already treated strings for CSV-safety, use ToDelimitedString() instead of ToCsv()
                     writer.Write(rowValues.ToDelimitedString(","));
+                }
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        private static async Task WriteToCsvAsync(
+            this SqlDataReader reader,
+            StreamWriter writer,
+            bool includeColumnNames)
+        {
+            try
+            {
+                if (reader.FieldCount == 0)
+                {
+                    throw new InvalidOperationException("A result set wasn't found when executing the command.  Command is a non-query.");
+                }
+
+                // write headers
+                if (includeColumnNames)
+                {
+                    var headers = new List<string>();
+
+                    for (var x = 0; x < reader.FieldCount; x++)
+                    {
+                        headers.Add(reader.GetName(x));
+                    }
+
+                    await writer.WriteAsync(headers.ToCsv());
+                }
+
+                // write content
+                while (await reader.ReadAsync())
+                {
+                    var rowValues = new List<string>();
+
+                    for (var x = 0; x < reader.FieldCount; x++)
+                    {
+                        if (reader.IsDBNull(x))
+                        {
+                            rowValues.Add(null);
+                        }
+                        else
+                        {
+                            var value = reader.GetValue(x);
+
+                            // strings, chars, and char arrays need to be made CSV-safe.
+                            // other data types are guaranteed to never violate CSV-safety rules.
+                            if (value is string stringValue)
+                            {
+                                rowValues.Add(stringValue.ToCsvSafe());
+                            }
+                            else if (value is char)
+                            {
+                                rowValues.Add(value.ToString().ToCsvSafe());
+                            }
+                            else if (value is char[] charArrayValue)
+                            {
+                                rowValues.Add(charArrayValue.Select(_ => _.ToString(CultureInfo.InvariantCulture)).ToDelimitedString(string.Empty).ToCsvSafe());
+                            }
+                            else if (value is DateTime valueAsDate)
+                            {
+                                // DateTime.ToString() will truncate time.
+                                var dateAsString = string.Empty;
+                                if (valueAsDate.Kind == DateTimeKind.Unspecified)
+                                {
+                                    // ReSharper disable once StringLiteralTypo
+                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
+                                }
+                                else if (valueAsDate.Kind == DateTimeKind.Local)
+                                {
+                                    // ReSharper disable once StringLiteralTypo
+                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.ffffffzzz", CultureInfo.InvariantCulture);
+                                }
+                                else if (valueAsDate.Kind == DateTimeKind.Utc)
+                                {
+                                    // ReSharper disable once StringLiteralTypo
+                                    dateAsString = valueAsDate.ToString("yyyy-MM-dd HH:mm:ss.ffffffZ", CultureInfo.InvariantCulture);
+                                }
+
+                                rowValues.Add(dateAsString);
+                            }
+                            else
+                            {
+                                rowValues.Add(value.ToString());
+                            }
+                        }
+                    }
+
+                    await writer.WriteLineAsync();
+
+                    // since we already treated strings for CSV-safety, use ToDelimitedString() instead of ToCsv()
+                    await writer.WriteAsync(rowValues.ToDelimitedString(","));
                 }
             }
             finally

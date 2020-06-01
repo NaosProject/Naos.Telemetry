@@ -32,17 +32,19 @@ namespace OBeautifulCode.Database.Recipes
         /// <summary>
         /// Regex pattern to split up an SQL statement.
         /// </summary>
-        private const string SqlStatementSeparatorRegexPattern = @"^\s*GO\s*$";
+        private static readonly Regex SqlStatementSeparatorRegex = new Regex(@"^\s*GO\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled);
 
         /// <summary>
         /// Splits a batch SQL statement into individual statements.
         /// </summary>
         /// <param name="batchSql">The batch SQL to process.</param>
-        /// <returns>Returns an enumerable with individual SQL statements.</returns>
-        public static IEnumerable<string> SplitSqlAndRemoveEmptyStatements(
+        /// <returns>
+        /// The individual SQL statements.
+        /// </returns>
+        public static IReadOnlyList<string> SplitSqlAndRemoveEmptyStatements(
             string batchSql)
         {
-            var result = Regex.Split(batchSql + "\n", SqlStatementSeparatorRegexPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline).Where(statement => !string.IsNullOrWhiteSpace(statement));
+            var result = SqlStatementSeparatorRegex.Split(batchSql + "\n").Where(statement => !string.IsNullOrWhiteSpace(statement)).ToList();
 
             return result;
         }
