@@ -1,12 +1,12 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <package>
   <metadata>
     <id>Naos.Telemetry.Recipes.DummyFactory</id>
     <description>A dummy factory for Telemetry types.</description>
     <tags>naos telemetry fakeiteasy autofixture dummy factory</tags>
     <dependencies>
-      <dependency id="Naos.Telemetry" version ="$version$" />
-      <dependency id="OBeautifulCode.AutoFakeItEasy" version ="1.0.113" />
+      <dependency id="Naos.Telemetry" version="$version$" />
+      <dependency id="OBeautifulCode.AutoFakeItEasy" version="1.0.127" />
     </dependencies>
   </metadata>
   <files>

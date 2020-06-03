@@ -133,7 +133,10 @@ namespace Naos.Telemetry.Writer
                             preppedValue = TelemetryWriter.JsonSerializer.SerializeToString(preppedValue);
                         }
 
-                        var parameter = DatabaseHelper.CreateParameter<SqlParameter>("@" + column.Name, column.DbType, preppedValue);
+                        var parameter = new SqlParameter("@" + column.Name, column.DbType)
+                                        {
+                                            Value = preppedValue,
+                                        };
                         return parameter;
                     }).ToList();
 

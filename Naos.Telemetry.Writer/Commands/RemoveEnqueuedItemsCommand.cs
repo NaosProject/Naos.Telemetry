@@ -22,14 +22,19 @@ namespace Naos.Telemetry.Writer
     /// <summary>
     /// Query to get the queued items.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Enqueued", Justification = "Spelling/name is correct.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Microsoft.Naming",
+        "CA1704:IdentifiersShouldBeSpelledCorrectly",
+        MessageId = "Enqueued",
+        Justification = "Spelling/name is correct.")]
     public class RemoveEnqueuedItemsCommand : ICommand
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="RemoveEnqueuedItemsCommand"/> class.
         /// </summary>
         /// <param name="idsToRemove">ID's to remove.</param>
-        public RemoveEnqueuedItemsCommand(IReadOnlyCollection<Guid> idsToRemove)
+        public RemoveEnqueuedItemsCommand(
+            IReadOnlyCollection<Guid> idsToRemove)
         {
             this.IdsToRemove = idsToRemove ?? throw new ArgumentNullException(nameof(idsToRemove));
         }
@@ -43,7 +48,11 @@ namespace Naos.Telemetry.Writer
     /// <summary>
     /// Handler for <see cref="RemoveEnqueuedItemsCommand" />.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Enqueued", Justification = "Spelling/name is correct.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Microsoft.Naming",
+        "CA1704:IdentifiersShouldBeSpelledCorrectly",
+        MessageId = "Enqueued",
+        Justification = "Spelling/name is correct.")]
     public class RemoveEnqueuedItemsCommandHandler : ICommandHandlerAsync<RemoveEnqueuedItemsCommand>
     {
         private readonly TelemetryDatabase telemetryDatabase;
@@ -52,20 +61,23 @@ namespace Naos.Telemetry.Writer
         /// Initializes a new instance of the <see cref="RemoveEnqueuedItemsCommandHandler"/> class.
         /// </summary>
         /// <param name="telemetryDatabase">Telemetry database.</param>
-        public RemoveEnqueuedItemsCommandHandler(TelemetryDatabase telemetryDatabase)
+        public RemoveEnqueuedItemsCommandHandler(
+            TelemetryDatabase telemetryDatabase)
         {
             this.telemetryDatabase = telemetryDatabase ?? throw new ArgumentNullException(nameof(telemetryDatabase));
         }
 
         /// <inheritdoc />
-        public async Task HandleAsync(RemoveEnqueuedItemsCommand command)
+        public async Task HandleAsync(
+            RemoveEnqueuedItemsCommand command)
         {
             if (command == null)
             {
                 throw new ArgumentNullException(nameof(command));
             }
 
-            var sql = Invariant($"DELETE FROM {RawQueueSchema.TableName} WHERE {RawQueueSchema.Id} IN ({string.Join(",", command.IdsToRemove.Select(_ => Invariant($"'{_}'")))})");
+            var sql = Invariant(
+                $"DELETE FROM {RawQueueSchema.TableName} WHERE {RawQueueSchema.Id} IN ({string.Join(",", command.IdsToRemove.Select(_ => Invariant($"'{_}'")))})");
 
             using (var connection = this.telemetryDatabase.CreateOpenedConnection())
             {

@@ -8,6 +8,8 @@ namespace Naos.Telemetry.Writer
 {
     using System;
     using System.Data;
+    using System.Data.SqlClient;
+    using System.Linq;
     using System.Threading.Tasks;
 
     using Naos.Telemetry.Domain;
@@ -74,7 +76,7 @@ namespace Naos.Telemetry.Writer
             }
         }
 
-        private IDbCommand BuildEnqueueCommand(IDbConnection connection, RawQueueItem item)
+        private SqlCommand BuildEnqueueCommand(SqlConnection connection, RawQueueItem item)
         {
             var columnSet = new[]
                                 {
@@ -88,13 +90,13 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(RawQueueSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
-                parameters,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
+                parameters);
 
             return command;
         }

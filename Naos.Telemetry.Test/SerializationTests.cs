@@ -17,8 +17,8 @@ namespace Naos.Telemetry.Test
 
     public static class SerializationTests
     {
-        private static readonly ObcBsonSerializer BsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonConfiguration));
-        private static readonly ObcJsonSerializer JsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonConfiguration));
+        private static readonly ObcBsonSerializer BsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonSerializationConfiguration).ToBsonSerializationConfigurationType());
+        private static readonly ObcJsonSerializer JsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonSerializationConfiguration).ToJsonSerializationConfigurationType());
 
         [Fact]
         public static void EventTelemetry_Roundtrips()
@@ -43,8 +43,8 @@ namespace Naos.Telemetry.Test
         {
             // Arrange
             var expected = A.Dummy<DiagnosticsTelemetry>();
-            var bsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonConfiguration));
-            var jsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonConfiguration));
+            var bsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonSerializationConfiguration).ToBsonSerializationConfigurationType());
+            var jsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonSerializationConfiguration).ToJsonSerializationConfigurationType());
 
             // Act
             var actualBsonString = bsonSerializer.SerializeToString(expected);
@@ -63,8 +63,8 @@ namespace Naos.Telemetry.Test
         {
             // Arrange
             var expected = A.Dummy<StopwatchSnapshot>();
-            var bsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonConfiguration));
-            var jsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonConfiguration));
+            var bsonSerializer = new ObcBsonSerializer(typeof(TelemetryBsonSerializationConfiguration).ToBsonSerializationConfigurationType());
+            var jsonSerializer = new ObcJsonSerializer(typeof(TelemetryJsonSerializationConfiguration).ToJsonSerializationConfigurationType());
 
             // Act
             var actualBsonString = bsonSerializer.SerializeToString(expected);

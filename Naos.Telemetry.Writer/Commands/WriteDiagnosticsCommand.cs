@@ -10,6 +10,7 @@ namespace Naos.Telemetry.Writer
     using System.Collections.Generic;
     using System.Data;
     using System.Data.SqlClient;
+    using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
 
@@ -132,7 +133,7 @@ namespace Naos.Telemetry.Writer
             }
         }
 
-        private IDbCommand BuildDiagnosticsCommand(IDbConnection connection, IDbTransaction transaction, DateTime sampledUtc, Guid diagnosticsId)
+        private SqlCommand BuildDiagnosticsCommand(SqlConnection connection, SqlTransaction transaction, DateTime sampledUtc, Guid diagnosticsId)
         {
             var columnSet = new[]
                                 {
@@ -142,19 +143,19 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(DiagnosticsSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
 
-        private IDbCommand BuildMachineDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, MachineDetails machineDetails)
+        private IDbCommand BuildMachineDetailsCommand(SqlConnection connection, SqlTransaction transaction, Guid diagnosticsId, MachineDetails machineDetails)
         {
             var columnSet = new[]
                                 {
@@ -172,19 +173,19 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(MachineDetailsSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
 
-        private IDbCommand BuildProcessDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, ProcessDetails processDetails)
+        private SqlCommand BuildProcessDetailsCommand(SqlConnection connection, SqlTransaction transaction, Guid diagnosticsId, ProcessDetails processDetails)
         {
             var columnSet = new[]
                                 {
@@ -199,19 +200,19 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(ProcessDetailsSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
 
-        private IDbCommand BuildAssemblyDetailsCommand(IDbConnection connection, IDbTransaction transaction, Guid diagnosticsId, AssemblyDetails assemblyDetails)
+        private SqlCommand BuildAssemblyDetailsCommand(SqlConnection connection, SqlTransaction transaction, Guid diagnosticsId, AssemblyDetails assemblyDetails)
         {
             var columnSet = new[]
                                 {
@@ -225,14 +226,14 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(AssemblyDetailsSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }

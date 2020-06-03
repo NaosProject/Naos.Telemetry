@@ -34,7 +34,7 @@ namespace Naos.Telemetry.Test
         public static async Task Write_and_process_items()
         {
             // Arrange
-            var serializationDescription = new SerializationDescription(SerializationKind.Json, SerializationFormat.String, typeof(TelemetryJsonConfiguration).ToRepresentation());
+            var serializerRepresentation = new SerializerRepresentation(SerializationKind.Json, typeof(TelemetryJsonSerializationConfiguration).ToRepresentation());
             var database =
                 new TelemetryDatabase { ConnectionSettings = new DatabaseConnectionSettings { Server = "localhost", Database = "Telemetry" } };
             var writer = TelemetryWriterBuilder.Build(database);
@@ -59,9 +59,9 @@ namespace Naos.Telemetry.Test
                 sampledUtc,
                 TelemetryWriter.JsonSerializer.SerializeToString(
                     diagnosticsTelemetry.ToDescribedSerializationUsingSpecificFactory(
-                        serializationDescription,
-                        JsonSerializerFactory.Instance,
-                        CompressorFactory.Instance)),
+                        serializerRepresentation,
+                        new JsonSerializerFactory(),
+                        SerializationFormat.String)),
                 "{}",
                 "{}",
                 "{}");
@@ -71,9 +71,9 @@ namespace Naos.Telemetry.Test
                 sampledUtc,
                 TelemetryWriter.JsonSerializer.SerializeToString(
                     eventTelemetry.ToDescribedSerializationUsingSpecificFactory(
-                        serializationDescription,
-                        JsonSerializerFactory.Instance,
-                        CompressorFactory.Instance)),
+                        serializerRepresentation,
+                        new JsonSerializerFactory(),
+                        SerializationFormat.String)),
                 "{}",
                 "{}",
                 "{}");
@@ -88,12 +88,12 @@ namespace Naos.Telemetry.Test
             var diagnosticsRaw = actualRaw.Single(_ => _.TelemetryObjectDescribedSerializationJson.Contains(nameof(DiagnosticsTelemetry)));
             var readDiagnostics = (DiagnosticsTelemetry)TelemetryWriter.JsonSerializer
                 .Deserialize<DescribedSerialization>(diagnosticsRaw.TelemetryObjectDescribedSerializationJson)
-                .DeserializePayloadUsingSpecificFactory(JsonSerializerFactory.Instance, CompressorFactory.Instance);
+                .DeserializePayloadUsingSpecificFactory(new JsonSerializerFactory());
 
             var eventRaw = actualRaw.Single(_ => _.TelemetryObjectDescribedSerializationJson.Contains(nameof(EventTelemetry)));
             var readEvent = (EventTelemetry)TelemetryWriter.JsonSerializer
                 .Deserialize<DescribedSerialization>(eventRaw.TelemetryObjectDescribedSerializationJson)
-                .DeserializePayloadUsingSpecificFactory(JsonSerializerFactory.Instance, CompressorFactory.Instance);
+                .DeserializePayloadUsingSpecificFactory(new JsonSerializerFactory());
 
             await writer.WriteDiagnosticsTelemetryAsync(new[] { readDiagnostics });
             await writer.WriteEventTelemetryAsync(new[] { new Tuple<EventTelemetrySource, EventTelemetry>(new EventTelemetrySource("Machine"),  readEvent) });

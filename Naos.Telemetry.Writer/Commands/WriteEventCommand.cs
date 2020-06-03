@@ -8,6 +8,8 @@ namespace Naos.Telemetry.Writer
 {
     using System;
     using System.Data;
+    using System.Data.SqlClient;
+    using System.Linq;
     using System.Threading.Tasks;
     using Naos.Telemetry.Domain;
     using Naos.Telemetry.StorageModel;
@@ -145,9 +147,9 @@ namespace Naos.Telemetry.Writer
             }
         }
 
-        private IDbCommand BuildEventSourceCommand(
-            IDbConnection connection,
-            IDbTransaction transaction,
+        private SqlCommand BuildEventSourceCommand(
+            SqlConnection connection,
+            SqlTransaction transaction,
             string machineName,
             string processName,
             string processFileVersion,
@@ -167,19 +169,19 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildProcedureStatement(EventSourceSchema.Sprocs.InsertEventTelemetrySourceAsNecessary.Name, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
 
-        private IDbCommand BuildEventCommand(IDbConnection connection, IDbTransaction transaction, Guid eventId, Guid eventSourceId, string name, DateTime sampledUtc)
+        private SqlCommand BuildEventCommand(SqlConnection connection, SqlTransaction transaction, Guid eventId, Guid eventSourceId, string name, DateTime sampledUtc)
         {
             var columnSet = new[]
                                 {
@@ -191,19 +193,19 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(EventSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
 
-        private IDbCommand BuildPropertyCommand(IDbConnection connection, IDbTransaction transaction, Guid eventId, string name, string value)
+        private SqlCommand BuildPropertyCommand(SqlConnection connection, SqlTransaction transaction, Guid eventId, string name, string value)
         {
             var columnSet = new[]
                                 {
@@ -215,19 +217,19 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(PropertySchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
 
-        private IDbCommand BuildMetricCommand(IDbConnection connection, IDbTransaction transaction, Guid eventId, string name, decimal? value)
+        private SqlCommand BuildMetricCommand(SqlConnection connection, SqlTransaction transaction, Guid eventId, string name, decimal? value)
         {
             var columnSet = new[]
                                 {
@@ -239,14 +241,14 @@ namespace Naos.Telemetry.Writer
 
             var sql = SqlCommon.BuildInsertStatement(MetricSchema.TableName, columnSet);
 
-            var parameters = SqlCommon.BuildParameters(columnSet);
+            var parameters = SqlCommon.BuildParameters(columnSet).ToList();
 
-            var command = DatabaseHelper.BuildCommand(
+            var command = DatabaseHelper.BuildSqlCommand(
                 connection,
                 sql,
+                this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0,
                 parameters,
-                transaction: transaction,
-                timeoutSeconds: this.telemetryDatabase.ConnectionSettings.DefaultCommandTimeoutInSeconds ?? 0);
+                transaction: transaction);
 
             return command;
         }
