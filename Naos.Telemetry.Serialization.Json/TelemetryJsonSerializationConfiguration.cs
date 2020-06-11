@@ -19,6 +19,12 @@ namespace Naos.Telemetry.Serialization.Json
     public class TelemetryJsonSerializationConfiguration : JsonSerializationConfigurationBase
     {
         /// <inheritdoc />
+        protected override IReadOnlyCollection<string> TypeToRegisterNamespacePrefixFilters => new[]
+                                                                                               {
+                                                                                                   typeof(DiagnosticsTelemetry).Namespace,
+                                                                                               };
+
+        /// <inheritdoc />
         protected override IReadOnlyCollection<JsonSerializationConfigurationType> DependentJsonSerializationConfigurationTypes => new[]
                                                                                  {
                                                                                      typeof(DiagnosticsJsonSerializationConfiguration).ToJsonSerializationConfigurationType(),

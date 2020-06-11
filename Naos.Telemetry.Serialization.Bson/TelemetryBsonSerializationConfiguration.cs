@@ -19,6 +19,12 @@ namespace Naos.Telemetry.Serialization.Bson
     public class TelemetryBsonSerializationConfiguration : BsonSerializationConfigurationBase
     {
         /// <inheritdoc />
+        protected override IReadOnlyCollection<string> TypeToRegisterNamespacePrefixFilters => new[]
+                                                                                               {
+                                                                                                   typeof(DiagnosticsTelemetry).Namespace,
+                                                                                               };
+
+        /// <inheritdoc />
         protected override IReadOnlyCollection<BsonSerializationConfigurationType> DependentBsonSerializationConfigurationTypes => new[]
                                                                                  {
                                                                                      typeof(DiagnosticsBsonSerializationConfiguration).ToBsonSerializationConfigurationType(),
