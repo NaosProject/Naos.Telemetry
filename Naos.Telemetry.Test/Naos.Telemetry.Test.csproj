@@ -141,7 +141,6 @@
     <Compile Include=".recipes\Naos.Diagnostics\PerformanceCounterLibrary.cs" />
     <Compile Include=".recipes\Naos.Diagnostics\PerformanceCounterSample.cs" />
     <Compile Include=".recipes\Naos.Diagnostics\ProcessHelpers.cs" />
-    <Compile Include=".recipes\Naos.InitializeTestProject\ExampleDummyFactory.cs" />
     <Compile Include=".recipes\OBeautifulCode.Assertion\Actions.cs" />
     <Compile Include=".recipes\OBeautifulCode.Assertion\ApplyBecause.cs" />
     <Compile Include=".recipes\OBeautifulCode.Assertion\AssertionKind.cs" />
