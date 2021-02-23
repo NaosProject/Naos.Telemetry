@@ -9,9 +9,9 @@
 
 namespace OBeautifulCode.Database.Recipes
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text.RegularExpressions;
+    using global::System.Collections.Generic;
+    using global::System.Linq;
+    using global::System.Text.RegularExpressions;
 
     /// <summary>
     /// Splits an SQL batch statement into individual statements.
@@ -20,9 +20,9 @@ namespace OBeautifulCode.Database.Recipes
     /// Adapted from <a href="http://blog.stpworks.com/archive/2010/02/22/how-to-split-sql-file-by-go-statement.aspx"/>
     /// Go statement must be on its own line.  Does not work for semicolon separator.
     /// </remarks>
-#if !OBeautifulCodeDatabaseRecipesProject
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    [System.CodeDom.Compiler.GeneratedCode("OBeautifulCode.Database.Recipes", "See package version number")]
+#if !OBeautifulCodeDatabaseSolution
+    [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [global::System.CodeDom.Compiler.GeneratedCode("OBeautifulCode.Database.Recipes", "See package version number")]
     internal
 #else
     public

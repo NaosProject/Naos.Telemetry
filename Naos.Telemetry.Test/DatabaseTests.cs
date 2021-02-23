@@ -87,12 +87,12 @@ namespace Naos.Telemetry.Test
 
             var diagnosticsRaw = actualRaw.Single(_ => _.TelemetryObjectDescribedSerializationJson.Contains(nameof(DiagnosticsTelemetry)));
             var readDiagnostics = (DiagnosticsTelemetry)TelemetryWriter.JsonSerializer
-                .Deserialize<DescribedSerialization>(diagnosticsRaw.TelemetryObjectDescribedSerializationJson)
+                .Deserialize<DescribedSerializationBase>(diagnosticsRaw.TelemetryObjectDescribedSerializationJson)
                 .DeserializePayloadUsingSpecificFactory(new JsonSerializerFactory());
 
             var eventRaw = actualRaw.Single(_ => _.TelemetryObjectDescribedSerializationJson.Contains(nameof(EventTelemetry)));
             var readEvent = (EventTelemetry)TelemetryWriter.JsonSerializer
-                .Deserialize<DescribedSerialization>(eventRaw.TelemetryObjectDescribedSerializationJson)
+                .Deserialize<DescribedSerializationBase>(eventRaw.TelemetryObjectDescribedSerializationJson)
                 .DeserializePayloadUsingSpecificFactory(new JsonSerializerFactory());
 
             await writer.WriteDiagnosticsTelemetryAsync(new[] { readDiagnostics });

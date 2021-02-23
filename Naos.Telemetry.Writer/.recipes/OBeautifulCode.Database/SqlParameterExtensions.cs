@@ -9,15 +9,15 @@
 
 namespace OBeautifulCode.Database.Recipes
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Data;
-    using System.Data.SqlClient;
-    using System.Linq;
+    using global::System;
+    using global::System.Collections.Generic;
+    using global::System.Data;
+    using global::System.Data.SqlClient;
+    using global::System.Linq;
 
     using OBeautifulCode.String.Recipes;
 
-    using static System.FormattableString;
+    using static global::System.FormattableString;
 
     /// <summary>
     /// Extension methods for dealing with <see cref="SqlParameter"/> objects.
@@ -33,9 +33,9 @@ namespace OBeautifulCode.Database.Recipes
     /// The size property has an invalid size of 0: <a href="https://stackoverflow.com/questions/3759285/ado-net-the-size-property-has-an-invalid-size-of-0/4719361"/>.
     /// SqlCommand Parameters size confusion: <a href="https://stackoverflow.com/questions/9483319/sqlcommand-parameters-size-confusion" />.
     /// </remarks>
-#if !OBeautifulCodeDatabaseRecipesProject
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    [System.CodeDom.Compiler.GeneratedCode("OBeautifulCode.Database.Recipes", "See package version number")]
+#if !OBeautifulCodeDatabaseSolution
+    [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [global::System.CodeDom.Compiler.GeneratedCode("OBeautifulCode.Database.Recipes", "See package version number")]
     internal
 #else
     public
