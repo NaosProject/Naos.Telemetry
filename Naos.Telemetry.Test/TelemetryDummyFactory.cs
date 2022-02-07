@@ -15,17 +15,18 @@ namespace Naos.Telemetry.Recipes
     using Naos.Diagnostics.Domain;
     using Naos.Telemetry;
     using Naos.Telemetry.Domain;
+    using Naos.Telemetry.Test;
     using OBeautifulCode.AutoFakeItEasy;
 
     /// <summary>
     /// A dummy factory for Accounting Time types.
     /// </summary>
-#if !NaosTelemetryRecipesProject
-    [System.Diagnostics.DebuggerStepThrough]
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    [System.CodeDom.Compiler.GeneratedCode("Naos.Telemetry", "See package version number")]
+#if !NaosTelemetrySolution
+    internal
+#else
+    public
 #endif
-    public class TelemetryDummyFactory : IDummyFactory
+    class TelemetryDummyFactory : DefaultTelemetryDummyFactory
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="TelemetryDummyFactory"/> class.
@@ -34,6 +35,8 @@ namespace Naos.Telemetry.Recipes
         [SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity", Justification = "This is not excessively complex.  Dummy factories typically wire-up many types.")]
         public TelemetryDummyFactory()
         {
+            /* Add any overriding or custom registrations here. */
+
             AutoFixtureBackedDummyFactory.AddDummyCreator(
                 () =>
                 {
@@ -57,21 +60,6 @@ namespace Naos.Telemetry.Recipes
 
                     return result;
                 });
-        }
-
-        /// <inheritdoc />
-        public Priority Priority => new FakeItEasy.Priority(1);
-
-        /// <inheritdoc />
-        public bool CanCreate(Type type)
-        {
-            return false;
-        }
-
-        /// <inheritdoc />
-        public object Create(Type type)
-        {
-            return null;
         }
     }
 }
