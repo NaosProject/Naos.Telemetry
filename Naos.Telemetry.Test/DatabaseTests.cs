@@ -60,6 +60,7 @@ namespace Naos.Telemetry.Test
                 TelemetryWriter.JsonSerializer.SerializeToString(
                     diagnosticsTelemetry.ToDescribedSerializationUsingSpecificFactory(
                         serializerRepresentation,
+                        SerializerRepresentationSelectionStrategy.UseRepresentationOfSerializerBuiltByFactory,
                         new JsonSerializerFactory(),
                         SerializationFormat.String)),
                 "{}",
@@ -72,6 +73,7 @@ namespace Naos.Telemetry.Test
                 TelemetryWriter.JsonSerializer.SerializeToString(
                     eventTelemetry.ToDescribedSerializationUsingSpecificFactory(
                         serializerRepresentation,
+                        SerializerRepresentationSelectionStrategy.UseRepresentationOfSerializerBuiltByFactory,
                         new JsonSerializerFactory(),
                         SerializationFormat.String)),
                 "{}",
